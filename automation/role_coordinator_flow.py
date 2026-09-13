@@ -46,19 +46,25 @@ def _run_role_checked(
     runner: Callable[..., object] = subprocess.run,
     which=None,
 ) -> dict[str, object]:
-    """Fail execution-affecting identity changes before a model can edit source."""
+    """Fail execution-affecting identity changes before a model can edit source.
 
-    try:
-        role_resume.reconcile_snapshots(
-            repo,
-            snapshots,
-            pending_role=role,
-        )
-    except role_resume.RoleResumeError as exc:
-        raise RoleCoordinatorError(
-            str(exc),
-            classification=workflow_stages.FAILURE_DETERMINISTIC,
-        ) from exc
+    Some model-free/runtime-agnostic coordinator fixtures intentionally omit the
+    durable run manifest. Production prepared/resumed runs have one; only those
+    runs have checkpoint identity to reconcile.
+    """
+
+    if role_resume.has_manifest(repo):
+        try:
+            role_resume.reconcile_snapshots(
+                repo,
+                snapshots,
+                pending_role=role,
+            )
+        except role_resume.RoleResumeError as exc:
+            raise RoleCoordinatorError(
+                str(exc),
+                classification=workflow_stages.FAILURE_DETERMINISTIC,
+            ) from exc
     return run_role(
         repo,
         role,

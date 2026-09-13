@@ -53,6 +53,14 @@ class ContinuationPatchAppliedResumeHotfixTests(ContinuationGitFixture, unittest
             branch=str(state["BranchName"]),
             role_snapshots={},
         )
+        for stage in (
+            "issue-selected",
+            "repository-read",
+            "handoff-synthesized",
+            "plan-created",
+            "implementation-generated",
+        ):
+            run_manifest.complete_stage(manifest_path, stage, run_root=current)
         source = workflow_stages.source_identity(repo, current, state)
         run_manifest.complete_stage(
             manifest_path,

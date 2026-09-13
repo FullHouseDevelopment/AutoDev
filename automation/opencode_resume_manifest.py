@@ -89,11 +89,37 @@ def role_snapshots(mappings: dict[str, dict[str, str]]) -> dict[str, object]:
     return snapshots
 
 
+def _adopt_pending_snapshot(
+    path: Path,
+    snapshots: dict[str, object],
+    role: str,
+) -> None:
+    if not role:
+        return
+    manifest = run_manifest.load_manifest(path)
+    try:
+        own_stage = run_manifest.invalidation_start_for_role(role)
+    except run_manifest.ManifestError:
+        return
+    if run_manifest.stage_completed(manifest, own_stage):
+        return
+    snapshot = snapshots.get(role)
+    if not isinstance(snapshot, dict):
+        return
+    roles = manifest.get("roles", {})
+    if not isinstance(roles, dict):
+        raise run_manifest.ManifestError("run manifest roles must be an object")
+    roles[role] = snapshot
+    manifest["roles"] = roles
+    run_manifest.save_manifest(path, manifest)
+
+
 def reconcile_models(
     repo: Path,
     mappings: dict[str, dict[str, str]],
     *,
     invalidated_roles: set[str] | None = None,
+    pending_role: str = "",
 ) -> dict[str, list[str]]:
     path = manifest_path(repo)
     if not path.is_file():
@@ -101,6 +127,7 @@ def reconcile_models(
     snapshots = role_snapshots(mappings)
     role_output_contract.bind_snapshot_set_to_existing_contexts(repo, snapshots)
     try:
+        _adopt_pending_snapshot(path, snapshots, pending_role)
         return run_manifest.reconcile_role_snapshots(
             path,
             snapshots,

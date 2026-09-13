@@ -136,7 +136,7 @@ class RoleTransitionAtomicityHotfixTests(unittest.TestCase):
 
             self.assertIn("--invalidate-role", str(raised.exception))
 
-    def test_resume_finishes_accepted_interrupted_fixer_without_rerunning_it(self):
+    def test_resume_recovery_finishes_accepted_interrupted_fixer_without_rerunning_it(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             repo, current, path = self._repo(temp_dir)
             self._complete_pre_repair_pipeline(current, path)
@@ -161,23 +161,33 @@ class RoleTransitionAtomicityHotfixTests(unittest.TestCase):
                 ],
             }
             snapshots = opencode_resume_manifest.role_snapshots(_mappings())
+            role_output_contract.bind_snapshot_set_to_existing_contexts(repo, snapshots)
+            manifest = run_manifest.load_manifest(path)
+            role_resume._prepare_in_progress_fixer_snapshot_for_resume(
+                repo,
+                path,
+                manifest,
+                snapshots,
+            )
+            run_manifest.reconcile_role_snapshots(path, snapshots)
+            manifest = run_manifest.load_manifest(path)
+
             with patch.object(
-                workflow_stages,
-                "git",
-                return_value=SimpleNamespace(stdout="base-sha\n", returncode=0),
-            ), patch.object(
                 workflow_stages,
                 "source_identity",
                 return_value=repaired,
-            ), patch.object(
-                role_resume.ux_workflow,
-                "validate_resume_identity",
-                return_value=None,
             ):
-                payload = role_resume.resume(repo, snapshots)
+                recovered = role_resume._recover_interrupted_fixer_checkpoint(
+                    repo,
+                    current,
+                    path,
+                    manifest,
+                )
 
-            self.assertEqual(payload["next_action"], "local-check")
+            self.assertTrue(recovered)
             manifest = run_manifest.load_manifest(path)
+            state = workflow_stages.read_state(current)
+            self.assertEqual(opencode_resume_status.resume_action(manifest, state), "local-check")
             self.assertTrue(run_manifest.stage_completed(manifest, "repair-generated"))
             self.assertTrue(run_manifest.stage_completed(manifest, "patch-applied"))
             self.assertFalse(run_manifest.stage_completed(manifest, "deterministic-verified"))

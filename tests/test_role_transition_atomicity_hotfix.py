@@ -242,6 +242,7 @@ class RoleTransitionAtomicityHotfixTests(unittest.TestCase):
                 source_proof=proof,
             )
             snapshots = opencode_resume_manifest.role_snapshots(_mappings())
+            role_output_contract.bind_snapshot_set_to_existing_contexts(repo, snapshots)
             manifest = run_manifest.load_manifest(path)
             role_resume._prepare_pending_source_role_snapshots_for_resume(
                 repo,

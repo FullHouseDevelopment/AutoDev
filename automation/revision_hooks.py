@@ -156,8 +156,21 @@ def install() -> None:
     if not getattr(current_mark, "_autodev_revision", False):
         original_mark = current_mark
 
-        def mark_role_accepted(current: Path, role: str, outputs: list[Path]) -> None:
-            original_mark(current, role, outputs)
+        def mark_role_accepted(
+            current: Path,
+            role: str,
+            outputs: list[Path],
+            *,
+            source_proof: dict[str, object] | None = None,
+        ) -> None:
+            # Preserve the legacy call shape when no source proof exists so wrappers,
+            # mocks, and third-party hooks that still implement the three-argument
+            # contract remain compatible. Source-editing roles forward the new proof
+            # explicitly when one is available.
+            if source_proof is None:
+                original_mark(current, role, outputs)
+            else:
+                original_mark(current, role, outputs, source_proof=source_proof)
             repo = current.expanduser().resolve().parent.parent
             _record_role(repo, role)
 

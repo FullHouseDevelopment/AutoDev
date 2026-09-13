@@ -39,6 +39,12 @@ def run(argv: list[str] | None = None) -> int:
         runtime.validate_arguments(args.arguments)
         snapshots = runtime.role_snapshots(repo, runner=subprocess.run)
         opencode_adapter_roles.prepare_role(args.role, repo, args.arguments)
+        if role_resume.has_manifest(repo):
+            role_resume.reconcile_snapshots(
+                repo,
+                snapshots,
+                pending_role=args.role,
+            )
         acceptance = role_coordinator_runtime.run_role(
             repo,
             args.role,

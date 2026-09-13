@@ -516,7 +516,7 @@ def install_hooks() -> None:
         def resume_problems(repo: Path, current: Path, manifest, state, **kwargs):
             problems = list(original_problems(repo, current, manifest, state, **kwargs))
             continuation_sha = _continuation_sha(state)
-            if not continuation_sha or run_manifest.stage_completed(manifest, "patch-applied"):
+            if not continuation_sha:
                 return problems
             base_sha = str(state.get("BaseSha", "")).strip()
             problems = [

@@ -65,14 +65,17 @@ class RoleTransitionAtomicityHotfixTests(unittest.TestCase):
         role_resume.reconcile_snapshots(repo, opencode_resume_manifest.role_snapshots(_mappings()))
         return repo, current, path
 
-    def _complete_pre_repair_pipeline(self, current: Path, path: Path) -> None:
+    def _complete_through_plan(self, current: Path, path: Path) -> None:
         for stage in (
             "repository-read",
             "handoff-synthesized",
             "plan-created",
-            "implementation-generated",
         ):
             run_manifest.complete_stage(path, stage, run_root=current)
+
+    def _complete_pre_repair_pipeline(self, current: Path, path: Path) -> None:
+        self._complete_through_plan(current, path)
+        run_manifest.complete_stage(path, "implementation-generated", run_root=current)
         run_manifest.complete_stage(
             path,
             "patch-applied",
@@ -114,6 +117,21 @@ class RoleTransitionAtomicityHotfixTests(unittest.TestCase):
                 bound["fixer"]["fingerprint"],
             )
 
+    def test_legacy_checkpoint_reconciliation_allows_first_fixer_binding(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            repo, current, path = self._repo(temp_dir)
+            self._complete_pre_repair_pipeline(current, path)
+            self._write_fixer_context(current)
+
+            opencode_resume_manifest.reconcile_models(
+                repo,
+                _mappings(),
+                pending_role="fixer",
+            )
+
+            manifest = run_manifest.load_manifest(path)
+            self.assertTrue(run_manifest.stage_completed(manifest, "deterministic-verified"))
+
     def test_changed_completed_fixer_still_requires_explicit_invalidation(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             repo, current, path = self._repo(temp_dir)
@@ -136,7 +154,7 @@ class RoleTransitionAtomicityHotfixTests(unittest.TestCase):
 
             self.assertIn("--invalidate-role", str(raised.exception))
 
-    def test_resume_recovery_finishes_accepted_interrupted_fixer_without_rerunning_it(self):
+    def test_historical_339_fixer_recovery_preserves_existing_accepted_edits(self):
         with tempfile.TemporaryDirectory() as temp_dir:
             repo, current, path = self._repo(temp_dir)
             self._complete_pre_repair_pipeline(current, path)
@@ -146,7 +164,17 @@ class RoleTransitionAtomicityHotfixTests(unittest.TestCase):
                 status="in-progress",
                 details={"kind": "semantic", "attempt": 1},
             )
+            run_manifest.record_failure(
+                path,
+                classification=workflow_stages.FAILURE_DETERMINISTIC,
+                reason=(
+                    "execution-affecting role configuration changed for completed work; "
+                    "resume requires --invalidate-role for: fixer -> deterministic-verified"
+                ),
+                stage="python-coordinator",
+            )
             self._write_fixer_context(current)
+            # Historical #339 runs predate source-bound acceptance markers.
             opencode_adapter_protocol._mark_role_accepted(current, "fixer", [])
 
             repaired = {
@@ -163,7 +191,7 @@ class RoleTransitionAtomicityHotfixTests(unittest.TestCase):
             snapshots = opencode_resume_manifest.role_snapshots(_mappings())
             role_output_contract.bind_snapshot_set_to_existing_contexts(repo, snapshots)
             manifest = run_manifest.load_manifest(path)
-            role_resume._prepare_in_progress_fixer_snapshot_for_resume(
+            role_resume._prepare_pending_source_role_snapshots_for_resume(
                 repo,
                 path,
                 manifest,
@@ -172,11 +200,7 @@ class RoleTransitionAtomicityHotfixTests(unittest.TestCase):
             run_manifest.reconcile_role_snapshots(path, snapshots)
             manifest = run_manifest.load_manifest(path)
 
-            with patch.object(
-                workflow_stages,
-                "source_identity",
-                return_value=repaired,
-            ):
+            with patch.object(workflow_stages, "source_identity", return_value=repaired):
                 recovered = role_resume._recover_interrupted_fixer_checkpoint(
                     repo,
                     current,
@@ -198,6 +222,81 @@ class RoleTransitionAtomicityHotfixTests(unittest.TestCase):
             )
             semantic_record = manifest["stages"]["semantic-verified"]
             self.assertEqual(semantic_record["status"], "pending")
+
+    def test_source_bound_interrupted_implementer_is_recovered_without_rerun(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            repo, current, path = self._repo(temp_dir)
+            self._complete_through_plan(current, path)
+            (current / "commit-message.txt").write_text("Implement quick capture\n", encoding="utf-8")
+            proof = {
+                "identity": "accepted-implementation-source",
+                "parent_sha": "base-sha",
+                "changes": [
+                    {"path": "TasksPage.xaml", "status": "modified", "sha256": "impl"}
+                ],
+            }
+            opencode_adapter_protocol._mark_role_accepted(
+                current,
+                "implementer",
+                [current / "commit-message.txt"],
+                source_proof=proof,
+            )
+            snapshots = opencode_resume_manifest.role_snapshots(_mappings())
+            manifest = run_manifest.load_manifest(path)
+            role_resume._prepare_pending_source_role_snapshots_for_resume(
+                repo,
+                path,
+                manifest,
+                snapshots,
+            )
+            run_manifest.reconcile_role_snapshots(path, snapshots)
+            manifest = run_manifest.load_manifest(path)
+
+            with patch.object(workflow_stages, "source_identity", return_value=proof):
+                recovered = role_resume._recover_interrupted_implementer_checkpoint(
+                    repo,
+                    current,
+                    path,
+                    manifest,
+                )
+
+            self.assertTrue(recovered)
+            manifest = run_manifest.load_manifest(path)
+            self.assertTrue(run_manifest.stage_completed(manifest, "implementation-generated"))
+            self.assertTrue(run_manifest.stage_completed(manifest, "patch-applied"))
+            self.assertEqual(opencode_resume_status.resume_action(manifest, workflow_stages.read_state(current)), "local-check")
+
+    def test_source_bound_acceptance_rejects_later_worktree_changes(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            repo, current, path = self._repo(temp_dir)
+            self._complete_through_plan(current, path)
+            (current / "commit-message.txt").write_text("Implement quick capture\n", encoding="utf-8")
+            accepted = {
+                "identity": "accepted-source",
+                "parent_sha": "base-sha",
+                "changes": [{"path": "TasksPage.xaml", "status": "modified", "sha256": "a"}],
+            }
+            changed = {
+                "identity": "changed-after-acceptance",
+                "parent_sha": "base-sha",
+                "changes": [{"path": "TasksPage.xaml", "status": "modified", "sha256": "b"}],
+            }
+            opencode_adapter_protocol._mark_role_accepted(
+                current,
+                "implementer",
+                [current / "commit-message.txt"],
+                source_proof=accepted,
+            )
+            manifest = run_manifest.load_manifest(path)
+            with patch.object(workflow_stages, "source_identity", return_value=changed):
+                recovered = role_resume._recover_interrupted_implementer_checkpoint(
+                    repo,
+                    current,
+                    path,
+                    manifest,
+                )
+            self.assertFalse(recovered)
+            self.assertFalse(run_manifest.stage_completed(run_manifest.load_manifest(path), "implementation-generated"))
 
     def test_unaccepted_in_progress_fixer_does_not_authorize_dirty_worktree(self):
         with tempfile.TemporaryDirectory() as temp_dir:

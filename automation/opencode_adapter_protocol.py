@@ -116,6 +116,18 @@ def _mark_role_accepted(
     relative = str(contract.get("output_artifact", ""))
     path = current / Path(relative).name if relative.startswith(".autodev-run/current/") else None
     digest = _file_sha256(path) if path is not None else ""
+
+    # Bind source-editing role acceptance to the exact repository identity in the
+    # same durable state write. If identity cannot be established, keep the older
+    # artifact-only marker for compatibility, but resume must not use it as generic
+    # authorization to adopt a dirty worktree.
+    if source_proof is None and role in {"implementer", "fixer"}:
+        try:
+            repo = current.parent.parent
+            source_proof = workflow_stages.source_identity(repo, current, state)
+        except (OSError, ValueError, workflow_stages.WorkflowStageError):
+            source_proof = None
+
     entry: dict[str, object] = {
         "artifact": relative,
         "sha256": digest,

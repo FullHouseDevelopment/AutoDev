@@ -60,12 +60,28 @@ def role_acceptance(repo: Path, role: str) -> dict[str, object]:
                 "artifact": artifact,
                 "reason": "accepted role artifact is missing or no longer matches its durable hash",
             }
-    return {
+    result: dict[str, object] = {
         "state": "ACCEPTED",
         "role": role,
         "artifact": artifact,
         "sha256": expected,
     }
+    source_identity = str(entry.get("source_identity", "") or "")
+    if source_identity:
+        result.update(
+            {
+                "source_identity": source_identity,
+                "source_parent_sha": str(entry.get("source_parent_sha", "") or ""),
+                "source_changed_paths": [
+                    str(value)
+                    for value in entry.get("source_changed_paths", [])
+                    if isinstance(value, str) and value
+                ]
+                if isinstance(entry.get("source_changed_paths", []), list)
+                else [],
+            }
+        )
+    return result
 
 
 def role_output_path(repo: Path, role: str) -> Path | None:

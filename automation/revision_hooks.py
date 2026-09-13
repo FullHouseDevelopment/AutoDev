@@ -156,8 +156,14 @@ def install() -> None:
     if not getattr(current_mark, "_autodev_revision", False):
         original_mark = current_mark
 
-        def mark_role_accepted(current: Path, role: str, outputs: list[Path]) -> None:
-            original_mark(current, role, outputs)
+        def mark_role_accepted(
+            current: Path,
+            role: str,
+            outputs: list[Path],
+            *,
+            source_proof: dict[str, object] | None = None,
+        ) -> None:
+            original_mark(current, role, outputs, source_proof=source_proof)
             repo = current.expanduser().resolve().parent.parent
             _record_role(repo, role)
 

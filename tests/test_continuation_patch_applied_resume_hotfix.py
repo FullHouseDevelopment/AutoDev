@@ -3,6 +3,7 @@ from __future__ import annotations
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 from automation import (
     continuation,
@@ -71,14 +72,25 @@ class ContinuationPatchAppliedResumeHotfixTests(ContinuationGitFixture, unittest
             self.assertTrue(run_manifest.stage_completed(manifest, "patch-applied"))
             self.assertEqual(self._git(repo, "rev-parse", "HEAD"), adopted)
 
-            problems = opencode_resume_status._resume_problems(
-                repo,
-                current,
-                manifest,
-                state,
-                runner=self._runner,
-                validate_remote=False,
-            )
+            patch_record = manifest["stages"]["patch-applied"]
+            expected_identity = str(patch_record["details"]["source_identity"])
+            with patch.object(
+                workflow_stages,
+                "source_identity",
+                return_value={
+                    "parent_sha": adopted,
+                    "identity": expected_identity,
+                    "changes": [],
+                },
+            ):
+                problems = opencode_resume_status._resume_problems(
+                    repo,
+                    current,
+                    manifest,
+                    state,
+                    runner=self._runner,
+                    validate_remote=False,
+                )
 
             self.assertEqual(problems, [])
             self.assertEqual(opencode_resume_status.resume_action(manifest, state), "local-check")

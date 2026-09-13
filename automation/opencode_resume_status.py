@@ -3,7 +3,7 @@ from __future__ import annotations
 import subprocess
 from pathlib import Path
 from typing import Callable
-from automation import run_manifest, ux_multimodal_resume, workflow_stages
+from automation import role_output_contract, run_manifest, ux_multimodal_resume, workflow_stages
 
 from automation.opencode_resume_checkpoint import (
     _stage_attempt,
@@ -44,7 +44,7 @@ def status_text(
     mapping = mappings.get(role, {}) if role else {}
     target = manifest.get("target", {}) if isinstance(manifest.get("target", {}), dict) else {}
     failure = manifest.get("failure", {}) if isinstance(manifest.get("failure", {}), dict) else {}
-    changed = _changed_role_consequences(manifest, mappings)
+    changed = _changed_role_consequences(repo, manifest, mappings)
     requested_invalidations = requested_invalidations or []
     multimodal = ux_multimodal_resume.summary(current)
 
@@ -219,11 +219,32 @@ def _resume_problems(
     return problems
 
 
+def _configuration_consequences(
+    manifest: dict[str, object],
+    role: str,
+) -> list[str]:
+    """Return only work actually owned by a completed role invocation.
+
+    Fixer repair application intentionally invalidates prior verification, but that
+    does not mean pre-repair deterministic verification was produced by Fixer.
+    """
+
+    try:
+        own_stage = run_manifest.invalidation_start_for_role(role)
+    except run_manifest.ManifestError:
+        return []
+    if not run_manifest.stage_completed(manifest, own_stage):
+        return []
+    return run_manifest.invalidated_stages_for_role(manifest, role)
+
+
 def _changed_role_consequences(
+    repo: Path,
     manifest: dict[str, object],
     mappings: dict[str, dict[str, str]],
 ) -> dict[str, list[str]]:
     current = role_snapshots(mappings)
+    role_output_contract.bind_snapshot_set_to_existing_contexts(repo, current)
     existing = manifest.get("roles", {})
     if not isinstance(existing, dict):
         existing = {}
@@ -234,7 +255,7 @@ def _changed_role_consequences(
         previous_fingerprint = previous.get("fingerprint") if isinstance(previous, dict) else ""
         latest_fingerprint = latest.get("fingerprint") if isinstance(latest, dict) else ""
         if previous_fingerprint and latest_fingerprint != previous_fingerprint:
-            changed[role] = run_manifest.invalidated_stages_for_role(manifest, role)
+            changed[role] = _configuration_consequences(manifest, role)
     return changed
 
 

@@ -48,7 +48,7 @@ def checkpoint_role(
     if not path.is_file():
         return
     current = repo / workflow_stages.CURRENT_DIR
-    reconcile_models(repo, mappings)
+    reconcile_models(repo, mappings, pending_role=role)
     manifest = run_manifest.load_manifest(path)
     try:
         if role == "reader":

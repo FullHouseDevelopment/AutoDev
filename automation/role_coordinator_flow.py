@@ -35,6 +35,48 @@ def _bind_structured_resume_identity(repo: Path, snapshots: dict[str, object]) -
     role_output_contract.bind_snapshot_set_to_existing_contexts(repo, snapshots)
 
 
+def _run_role_checked(
+    repo: Path,
+    role: str,
+    runtime: role_runtime.RoleRuntime,
+    snapshots: dict[str, object],
+    *,
+    repair_kind: str = "",
+    already_prepared: bool = False,
+    runner: Callable[..., object] = subprocess.run,
+    which=None,
+) -> dict[str, object]:
+    """Fail execution-affecting identity changes before a model can edit source.
+
+    Some model-free/runtime-agnostic coordinator fixtures intentionally omit the
+    durable run manifest. Production prepared/resumed runs have one; only those
+    runs have checkpoint identity to reconcile.
+    """
+
+    if role_resume.has_manifest(repo):
+        try:
+            role_resume.reconcile_snapshots(
+                repo,
+                snapshots,
+                pending_role=role,
+            )
+        except role_resume.RoleResumeError as exc:
+            raise RoleCoordinatorError(
+                str(exc),
+                classification=workflow_stages.FAILURE_DETERMINISTIC,
+            ) from exc
+    return run_role(
+        repo,
+        role,
+        runtime,
+        snapshots,
+        repair_kind=repair_kind,
+        already_prepared=already_prepared,
+        runner=runner,
+        which=which,
+    )
+
+
 def coordinate(
     repo: Path,
     *,
@@ -171,7 +213,7 @@ def coordinate(
 
         action = str(cursor.get("next_action", ""))
         if action in ROLE_ACTIONS:
-            run_role(
+            _run_role_checked(
                 repo,
                 action,
                 runtime,
@@ -189,7 +231,7 @@ def coordinate(
             )
             if rendered.get("state") != "CONTINUE":
                 return terminal_payload(repo, rendered, arguments=arguments)
-            run_role(
+            _run_role_checked(
                 repo,
                 "implementer",
                 runtime,
@@ -210,7 +252,7 @@ def coordinate(
             if outcome.get("state") in {"BLOCKED", "FAILED"}:
                 return terminal_payload(repo, outcome, arguments=arguments)
         elif action == "verifier":
-            run_role(
+            _run_role_checked(
                 repo,
                 "verifier",
                 runtime,
@@ -264,7 +306,7 @@ def coordinate(
             if outcome.get("state") != "CONTINUE":
                 return terminal_payload(repo, outcome, arguments=arguments)
         elif action in REPAIR_KINDS:
-            run_role(
+            _run_role_checked(
                 repo,
                 "fixer",
                 runtime,

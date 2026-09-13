@@ -3,7 +3,7 @@ from __future__ import annotations
 import subprocess
 from pathlib import Path
 from typing import Callable
-from automation import run_manifest, workflow_stages, ux_resolver, ux_workflow
+from automation import role_output_contract, run_manifest, workflow_stages, ux_resolver, ux_workflow
 
 from automation.opencode_resume_checkpoint import (
     _checkpoint_patch_applied,
@@ -22,6 +22,7 @@ from automation.opencode_resume_status import (
     repair_attempts,
     resume_action,
 )
+
 
 def resume(
     repo: Path,
@@ -53,9 +54,11 @@ def resume(
                     raise OpenCodeResumeError(
                         f"cannot invalidate completed {role} work while direct OpenCode edits remain in the worktree; restore the prepared base first"
                     )
+        snapshots = role_snapshots(mappings)
+        role_output_contract.bind_snapshot_set_to_existing_contexts(repo, snapshots)
         run_manifest.reconcile_role_snapshots(
             path,
-            role_snapshots(mappings),
+            snapshots,
             explicit_invalidations=invalidated_roles,
         )
         manifest = run_manifest.load_manifest(path)
@@ -90,6 +93,7 @@ def resume(
         "commit_sha": str(state.get("LastCommitSha", "")),
         "pr_url": str(state.get("PrUrl", "")),
     }
+
 
 def _repair_atomic_implementation_checkpoint(
     repo: Path,

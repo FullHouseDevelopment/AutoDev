@@ -1,11 +1,8 @@
 from __future__ import annotations
 
 from automation import opencode_resume_status
-
 from automation import opencode_resume_execution
-
 from automation import opencode_resume_contract
-
 from automation import opencode_resume_checkpoint
 
 import subprocess
@@ -119,12 +116,7 @@ def _adopt_pending_role_snapshot(
     snapshots: dict[str, object],
     role: str,
 ) -> bool:
-    """Bind the current invocation identity before that role owns completed work.
-
-    A first contract/UX binding is not a change to already-completed work from the
-    role. This is especially important for Fixer: pre-repair deterministic evidence
-    predates the Fixer and must only be invalidated when a repair is actually applied.
-    """
+    """Bind the current invocation identity before that role owns completed work."""
 
     if not role:
         return False
@@ -174,12 +166,45 @@ def reconcile_snapshots(
         raise RoleResumeError(str(exc)) from exc
 
 
+def _complete_implementer_checkpoint(
+    repo: Path,
+    current: Path,
+    path: Path,
+    proof: dict[str, object] | None = None,
+) -> None:
+    proof = proof or workflow_stages.source_identity(
+        repo,
+        current,
+        workflow_stages.read_state(current),
+    )
+    manifest = run_manifest.load_manifest(path)
+    run_manifest.complete_stage(
+        path,
+        "implementation-generated",
+        run_root=current,
+        artifacts=[current / "commit-message.txt"],
+        inputs={
+            "plan_output": opencode_resume_checkpoint._stage_output_hash(manifest, "plan-created"),
+            "implementer_fingerprint": run_manifest.stage_role_fingerprint(manifest, "implementer"),
+        },
+        details=opencode_resume_checkpoint._source_details(proof),
+    )
+    opencode_resume_checkpoint._checkpoint_patch_applied(
+        path,
+        current,
+        proof,
+        kind="implementation",
+        attempt=0,
+    )
+
+
 def _complete_fixer_checkpoint(
     repo: Path,
     current: Path,
     path: Path,
     *,
     runtime_name: str,
+    proof: dict[str, object] | None = None,
 ) -> None:
     manifest = run_manifest.load_manifest(path)
     repair = opencode_resume_checkpoint._stage_record(manifest, "repair-generated")
@@ -198,7 +223,7 @@ def _complete_fixer_checkpoint(
         "fixer",
         reason=f"{runtime_name} {kind} repair applied",
     )
-    proof = workflow_stages.source_identity(
+    proof = proof or workflow_stages.source_identity(
         repo,
         current,
         workflow_stages.read_state(current),
@@ -242,38 +267,135 @@ def _complete_fixer_checkpoint(
     )
 
 
-def _accepted_in_progress_fixer(repo: Path, manifest: dict[str, object]) -> bool:
+def _accepted_pending_role(
+    repo: Path,
+    manifest: dict[str, object],
+    role: str,
+) -> dict[str, object]:
+    if _role_stage_completed(manifest, role):
+        return {}
+    acceptance = coordination_state.role_acceptance(repo, role)
+    return acceptance if acceptance.get("state") == "ACCEPTED" else {}
+
+
+def _accepted_in_progress_fixer(repo: Path, manifest: dict[str, object]) -> dict[str, object]:
     if run_manifest.stage_completed(manifest, "repair-generated"):
-        return False
+        return {}
     repair = opencode_resume_checkpoint._stage_record(manifest, "repair-generated")
     if str(repair.get("status", "")) != "in-progress":
-        return False
-    return coordination_state.role_acceptance(repo, "fixer").get("state") == "ACCEPTED"
+        return {}
+    acceptance = coordination_state.role_acceptance(repo, "fixer")
+    return acceptance if acceptance.get("state") == "ACCEPTED" else {}
 
 
-def _prepare_in_progress_fixer_snapshot_for_resume(
+def _assert_pending_accepted_role_base_identity(
+    path: Path,
+    manifest: dict[str, object],
+    snapshots: dict[str, object],
+    role: str,
+    acceptance: dict[str, object],
+) -> None:
+    if not acceptance:
+        return
+    roles = manifest.get("roles", {})
+    previous = roles.get(role) if isinstance(roles, dict) else None
+    current = snapshots.get(role)
+    previous_base = _snapshot_base_fingerprint(previous)
+    current_base = _snapshot_base_fingerprint(current)
+    if previous_base and current_base and previous_base != current_base:
+        raise RoleResumeError(
+            f"accepted {role} work was interrupted before checkpointing, but the effective {role} configuration has since changed"
+        )
+    _adopt_pending_role_snapshot(path, snapshots, role)
+
+
+def _prepare_pending_source_role_snapshots_for_resume(
     repo: Path,
     path: Path,
     manifest: dict[str, object],
     snapshots: dict[str, object],
 ) -> None:
-    repair = opencode_resume_checkpoint._stage_record(manifest, "repair-generated")
-    if str(repair.get("status", "")) != "in-progress":
-        return
+    implementer = _accepted_pending_role(repo, manifest, "implementer")
+    _assert_pending_accepted_role_base_identity(
+        path,
+        manifest,
+        snapshots,
+        "implementer",
+        implementer,
+    )
 
-    # An unaccepted interrupted Fixer has produced no durable role result, so the
-    # next invocation may legitimately use the current configuration. An accepted
-    # Fixer may be recovered only when the underlying route/config identity is the
-    # same and the mismatch is the expected contract/UX binding transition.
-    if _accepted_in_progress_fixer(repo, manifest):
-        roles = manifest.get("roles", {})
-        previous = roles.get("fixer") if isinstance(roles, dict) else None
-        current = snapshots.get("fixer")
-        previous_base = _snapshot_base_fingerprint(previous)
-        current_base = _snapshot_base_fingerprint(current)
-        if previous_base and current_base and previous_base != current_base:
-            return
-    _adopt_pending_role_snapshot(path, snapshots, "fixer")
+    fixer = _accepted_in_progress_fixer(repo, manifest)
+    if fixer:
+        _assert_pending_accepted_role_base_identity(
+            path,
+            manifest,
+            snapshots,
+            "fixer",
+            fixer,
+        )
+    else:
+        repair = opencode_resume_checkpoint._stage_record(manifest, "repair-generated")
+        if str(repair.get("status", "")) == "in-progress":
+            # No accepted Fixer result exists. It is safe to bind the configuration
+            # that a future retry would use, but source drift remains fail-closed.
+            _adopt_pending_role_snapshot(path, snapshots, "fixer")
+
+
+def _current_source_proof(
+    repo: Path,
+    current: Path,
+) -> dict[str, object]:
+    return workflow_stages.source_identity(
+        repo,
+        current,
+        workflow_stages.read_state(current),
+    )
+
+
+def _acceptance_matches_source(
+    acceptance: dict[str, object],
+    proof: dict[str, object],
+) -> bool:
+    expected = str(acceptance.get("source_identity", "") or "")
+    if not expected or expected != str(proof.get("identity", "") or ""):
+        return False
+    expected_parent = str(acceptance.get("source_parent_sha", "") or "")
+    return not expected_parent or expected_parent == str(proof.get("parent_sha", "") or "")
+
+
+def _legacy_339_fixer_recovery_allowed(
+    manifest: dict[str, object],
+    acceptance: dict[str, object],
+) -> bool:
+    if str(acceptance.get("source_identity", "") or ""):
+        return False
+    failure = manifest.get("failure", {})
+    if not isinstance(failure, dict):
+        return False
+    reason = str(failure.get("reason", "") or "")
+    classification = str(failure.get("classification", "") or "")
+    return (
+        classification == workflow_stages.FAILURE_DETERMINISTIC
+        and "execution-affecting role configuration changed for completed work" in reason
+        and "fixer -> deterministic-verified" in reason
+        and run_manifest.stage_completed(manifest, "deterministic-verified")
+    )
+
+
+def _recover_interrupted_implementer_checkpoint(
+    repo: Path,
+    current: Path,
+    path: Path,
+    manifest: dict[str, object],
+) -> bool:
+    acceptance = _accepted_pending_role(repo, manifest, "implementer")
+    if not acceptance or not str(acceptance.get("source_identity", "") or ""):
+        return False
+    proof = _current_source_proof(repo, current)
+    if not _acceptance_matches_source(acceptance, proof):
+        return False
+    _complete_implementer_checkpoint(repo, current, path, proof)
+    return True
 
 
 def _recover_interrupted_fixer_checkpoint(
@@ -282,13 +404,21 @@ def _recover_interrupted_fixer_checkpoint(
     path: Path,
     manifest: dict[str, object],
 ) -> bool:
-    if not _accepted_in_progress_fixer(repo, manifest):
+    acceptance = _accepted_in_progress_fixer(repo, manifest)
+    if not acceptance:
+        return False
+    proof = _current_source_proof(repo, current)
+    if str(acceptance.get("source_identity", "") or ""):
+        if not _acceptance_matches_source(acceptance, proof):
+            return False
+    elif not _legacy_339_fixer_recovery_allowed(manifest, acceptance):
         return False
     _complete_fixer_checkpoint(
         repo,
         current,
         path,
         runtime_name="resume-recovery",
+        proof=proof,
     )
     return True
 
@@ -361,29 +491,7 @@ def checkpoint_role(
             )
             return
         if role == "implementer":
-            proof = workflow_stages.source_identity(
-                repo,
-                current,
-                workflow_stages.read_state(current),
-            )
-            run_manifest.complete_stage(
-                path,
-                "implementation-generated",
-                run_root=current,
-                artifacts=[current / "commit-message.txt"],
-                inputs={
-                    "plan_output": opencode_resume_checkpoint._stage_output_hash(manifest, "plan-created"),
-                    "implementer_fingerprint": run_manifest.stage_role_fingerprint(manifest, "implementer"),
-                },
-                details=opencode_resume_checkpoint._source_details(proof),
-            )
-            opencode_resume_checkpoint._checkpoint_patch_applied(
-                path,
-                current,
-                proof,
-                kind="implementation",
-                attempt=0,
-            )
+            _complete_implementer_checkpoint(repo, current, path)
             return
         if role == "fixer":
             _complete_fixer_checkpoint(
@@ -394,9 +502,6 @@ def checkpoint_role(
             )
             return
         if role == "verifier":
-            # Verifier output is consumed by the semantic stage, but snapshot
-            # reconciliation above has already bound that stage to this contract
-            # version and effective AutoDev-owned UX context fingerprint.
             return
     except (run_manifest.ManifestError, workflow_stages.WorkflowStageError) as exc:
         raise RoleResumeError(str(exc)) from exc
@@ -450,7 +555,7 @@ def resume(
                         f"cannot invalidate completed {role} work while direct runtime edits remain in the worktree; restore the prepared base first"
                     )
 
-        _prepare_in_progress_fixer_snapshot_for_resume(
+        _prepare_pending_source_role_snapshots_for_resume(
             repo,
             path,
             manifest,
@@ -463,6 +568,14 @@ def resume(
         )
         manifest = run_manifest.load_manifest(path)
         state = workflow_stages.read_state(current)
+
+        # Recover source-editing roles only when their fresh acceptance marker is
+        # bound to the exact current source identity. Historical #339 Fixer runs
+        # get one narrow compatibility path keyed to the known terminal signature.
+        if _recover_interrupted_implementer_checkpoint(repo, current, path, manifest):
+            manifest = run_manifest.load_manifest(path)
+            state = workflow_stages.read_state(current)
+
         opencode_resume_execution._repair_atomic_implementation_checkpoint(
             repo,
             current,
@@ -472,9 +585,6 @@ def resume(
         )
         manifest = run_manifest.load_manifest(path)
 
-        # A Fixer acceptance marker is written only after the current physical
-        # invocation passed Python validation; begin_role cleared any older marker.
-        # Finish that interrupted checkpoint before generic source-drift checks.
         if _recover_interrupted_fixer_checkpoint(repo, current, path, manifest):
             manifest = run_manifest.load_manifest(path)
             state = workflow_stages.read_state(current)
@@ -489,7 +599,7 @@ def resume(
         )
         if problems:
             raise RoleResumeError("resume refused: " + "; ".join(problems))
-    except run_manifest.ManifestError as exc:
+    except (run_manifest.ManifestError, workflow_stages.WorkflowStageError) as exc:
         raise RoleResumeError(str(exc)) from exc
 
     action = opencode_resume_status.resume_action(manifest, state)

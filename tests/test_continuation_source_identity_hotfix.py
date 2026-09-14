@@ -31,6 +31,12 @@ class ContinuationSourceIdentityHotfixTests(ContinuationGitFixture, unittest.Tes
         adopted = self._git(repo, "rev-parse", "HEAD")
         self._git(repo, "checkout", "--detach", adopted)
 
+        # Real AutoDev repositories exclude durable run artifacts from source scope.
+        # Mirror that contract so this fixture isolates the one implementation deletion.
+        exclude = repo / ".git" / "info" / "exclude"
+        existing_excludes = exclude.read_text(encoding="utf-8") if exclude.is_file() else ""
+        exclude.write_text(existing_excludes + "\n.autodev-run/\n", encoding="utf-8")
+
         current = repo / ".autodev-run" / "current"
         current.mkdir(parents=True)
         workflow_workspace.write_workspace_snapshot(repo, current / "workspace-snapshot.json")

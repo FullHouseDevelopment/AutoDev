@@ -68,8 +68,17 @@ def validate_prepared_worktree(
         )
     return head
 
+def source_parent_sha(state: dict[str, object]) -> str:
+    last_commit = str(state.get("LastCommitSha", "")).strip()
+    if last_commit:
+        return last_commit
+    continuation = str(state.get("ContinuationResolvedSha", "")).strip()
+    if continuation:
+        return continuation
+    return str(state.get("BaseSha", "")).strip()
+
 def source_identity(repo: Path, current: Path, state: dict[str, object]) -> dict[str, object]:
-    parent_sha = str(state.get("LastCommitSha", "")).strip() or str(state.get("BaseSha", "")).strip()
+    parent_sha = source_parent_sha(state)
     if not parent_sha:
         raise WorkflowStageError("cannot calculate source identity because the current commit parent is missing")
     baseline_path, expected_hash = _baseline_snapshot(current, state)
@@ -159,14 +168,12 @@ def workspace_path_in_scope(repo: Path, relative: str) -> bool:
 
 def write_workspace_snapshot(repo: Path, path: Path) -> None:
     write_json(path, workspace_snapshot(repo))
-
 def ignored_workspace_path(relative: str) -> bool:
     normalized = relative.replace("\\", "/").removeprefix("./")
     return normalized == "memory.md" or normalized.endswith("/memory.md") or any(
         normalized.startswith(prefix) or f"/{prefix}" in f"/{normalized}"
         for prefix in IGNORED_PREFIXES
     )
-
 def repository_modified(repo: Path, current: Path, state: dict[str, object]) -> bool:
     try:
         return bool(workspace_changes(repo, current, state))

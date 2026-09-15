@@ -187,7 +187,7 @@ class LegacyContinuationCheckpointMigrationHotfixTests(
             self.assertEqual(self._git(repo, "rev-parse", "HEAD"), adopted)
             self.assertEqual(
                 self._git(repo, "status", "--short"),
-                " D .github/GitVersion.yaml",
+                "D .github/GitVersion.yaml",
             )
 
             resumed = role_resume.resume(

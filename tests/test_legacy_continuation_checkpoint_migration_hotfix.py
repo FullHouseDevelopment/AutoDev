@@ -38,6 +38,15 @@ class LegacyContinuationCheckpointMigrationHotfixTests(
         adopted = self._git(repo, "rev-parse", "HEAD")
         self._git(repo, "checkout", "--detach", adopted)
 
+        # A configured AutoDev repository excludes durable run state from source
+        # identity. Mirror that boundary so the fixture contains exactly the one
+        # source deletion from the real Sky Home reproducer.
+        git_exclude = repo / ".git" / "info" / "exclude"
+        git_exclude.write_text(
+            git_exclude.read_text(encoding="utf-8") + "\n.autodev-run/\n",
+            encoding="utf-8",
+        )
+
         current = repo / ".autodev-run" / "current"
         current.mkdir(parents=True)
         continuation.install_hooks()
@@ -176,7 +185,10 @@ class LegacyContinuationCheckpointMigrationHotfixTests(
             self.assertEqual(persisted_state["BaseSha"], base)
             self.assertEqual(persisted_state["ContinuationResolvedSha"], adopted)
             self.assertEqual(self._git(repo, "rev-parse", "HEAD"), adopted)
-            self.assertEqual(self._git(repo, "status", "--short"), "D  .github/GitVersion.yaml".replace("D  ", " D "))
+            self.assertEqual(
+                self._git(repo, "status", "--short"),
+                " D .github/GitVersion.yaml",
+            )
 
             resumed = role_resume.resume(
                 repo,

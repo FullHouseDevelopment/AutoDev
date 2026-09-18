@@ -16,7 +16,7 @@ from automation import native_packaging, package_release
 PACKAGE_NAME = "autodev"
 ARCH_DEB = "amd64"
 ARCH_RPM = "x86_64"
-HOMEPAGE = "https://github.com/yaron-E92/AutoDev"
+HOMEPAGE = "https://github.com/FullHouseDevelopment/AutoDev"
 LICENSE_DECLARATION = "GPL-3.0-only"
 
 

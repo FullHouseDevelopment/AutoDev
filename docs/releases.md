@@ -156,7 +156,7 @@ Also inspect `autodev-release-manifest.json` and confirm that `version` and `com
 With a current GitHub CLI, verify a downloaded artifact against AutoDev's GitHub artifact attestation. For example:
 
 ```bash
-gh attestation verify ./autodev_X.Y.Z_amd64.deb --repo yaron-E92/AutoDev --signer-workflow yaron-E92/AutoDev/.github/workflows/release.yml
+gh attestation verify ./autodev_X.Y.Z_amd64.deb --repo FullHouseDevelopment/AutoDev --signer-workflow FullHouseDevelopment/AutoDev/.github/workflows/release.yml
 ```
 
 The same form can be used for the MSI, RPM, source ZIPs, and manifest. GitHub CLI verifies the artifact digest and Actions identity/provenance rather than trusting the filename alone.
@@ -164,7 +164,7 @@ The same form can be used for the MSI, RPM, source ZIPs, and manifest. GitHub CL
 GitHub CLI versions that support release-level verification can additionally run:
 
 ```bash
-gh release verify vX.Y.Z -R yaron-E92/AutoDev
+gh release verify vX.Y.Z -R FullHouseDevelopment/AutoDev
 ```
 
 ## Windows signing status

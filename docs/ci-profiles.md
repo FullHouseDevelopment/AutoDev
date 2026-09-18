@@ -30,7 +30,7 @@ Example:
 ```yaml
 jobs:
   baseline:
-    uses: yaron-E92/AutoDev/.github/workflows/profile-baseline.yml@<AUTODEV_COMMIT_SHA>
+    uses: FullHouseDevelopment/AutoDev/.github/workflows/profile-baseline.yml@<AUTODEV_COMMIT_SHA>
     with:
       ref: ${{ github.sha }}
       require_concurrency: true

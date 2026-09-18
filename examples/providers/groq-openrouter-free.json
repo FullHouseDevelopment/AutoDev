@@ -31,7 +31,7 @@
       "timeout_seconds": 2400,
       "free_only": true,
       "headers": {
-        "HTTP-Referer": "https://github.com/yaron-E92/AutoDev",
+        "HTTP-Referer": "https://github.com/FullHouseDevelopment/AutoDev",
         "X-Title": "AutoDev"
       }
     },
@@ -43,7 +43,7 @@
       "timeout_seconds": 2400,
       "free_only": true,
       "headers": {
-        "HTTP-Referer": "https://github.com/yaron-E92/AutoDev",
+        "HTTP-Referer": "https://github.com/FullHouseDevelopment/AutoDev",
         "X-Title": "AutoDev"
       }
     },

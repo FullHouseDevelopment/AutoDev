@@ -19,7 +19,7 @@ autodev_ref      exact 40-character AutoDev commit running the workflow
 commands_json    configured Windows verification commands
 ```
 
-The job checks out the target repository at `expected_sha`, checks out `yaron-E92/AutoDev` at `autodev_ref`, and executes `windows/scripts/windows-verification-worker.ps1` from that ephemeral AutoDev checkout. No SSH host, permanent Windows machine, or fixed `C:\AutoDev` path is required.
+The job checks out the target repository at `expected_sha`, checks out `FullHouseDevelopment/AutoDev` at `autodev_ref`, and executes `windows/scripts/windows-verification-worker.ps1` from that ephemeral AutoDev checkout. No SSH host, permanent Windows machine, or fixed `C:\AutoDev` path is required.
 
 Because `autodev_ref` is supplied at dispatch time, updating AutoDev does **not** normally require committing a new workflow revision in every target repository. Reinstall and commit the target workflow when the workflow protocol/template or the repository's `setup` configuration changes.
 

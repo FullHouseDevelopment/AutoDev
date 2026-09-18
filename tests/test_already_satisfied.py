@@ -45,7 +45,7 @@ class AlreadySatisfiedTests(unittest.TestCase):
             current / "state.json",
             {
                 "Status": "Planned",
-                "RepoFullName": "yaron-E92/events",
+                "RepoFullName": "FullHouseDevelopment/events",
                 "IssueNumber": 179,
                 "IssueTitle": "Centralize artifacts output",
                 "IssueText": issue,
@@ -62,7 +62,7 @@ class AlreadySatisfiedTests(unittest.TestCase):
         run_manifest.create_manifest(
             current / run_manifest.MANIFEST_NAME,
             repo_path=repo,
-            github_repo="yaron-E92/events",
+            github_repo="FullHouseDevelopment/events",
             issue_number=179,
             mode="pr",
             base_sha="1710a36fdafbae72819bfe66eb146d5f70b679c1",

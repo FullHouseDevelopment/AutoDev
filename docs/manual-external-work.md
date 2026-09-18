@@ -99,6 +99,6 @@ Never put passwords, tokens, credentials, private keys, certificate key material
 
 ## Example: external Windows publisher identity
 
-An issue like `yaron-E92/events#176` requires third-party publisher identity validation and certificate/signing-authority provisioning. AutoDev should classify that substantive outcome as `manual-external`, produce the action/evidence plan, clear stale running ownership, and stop before Implementer/Fixer.
+An issue like `FullHouseDevelopment/events#176` requires third-party publisher identity validation and certificate/signing-authority provisioning. AutoDev should classify that substantive outcome as `manual-external`, produce the action/evidence plan, clear stale running ownership, and stop before Implementer/Fixer.
 
 Repository work that can proceed independently—such as CI, artifact staging, test-signing support, or release-pipeline engineering—belongs in separate automatable issues and is not blocked merely because the public production identity is still pending.

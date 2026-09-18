@@ -56,7 +56,7 @@ class AlreadySatisfiedBoundaryTests(unittest.TestCase):
             with patch.object(
                 workflow_preparation.repository_identity,
                 "resolve_github_repository",
-                return_value="yaron-E92/events",
+                return_value="FullHouseDevelopment/events",
             ), patch.object(
                 workflow_preparation,
                 "gh_json",

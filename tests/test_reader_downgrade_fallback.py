@@ -118,7 +118,7 @@ class ReaderClassificationAdvisoryTests(unittest.TestCase):
             "Status": "Prepared",
             "IssueNumber": 230,
             "IssueText": issue_text,
-            "RepoFullName": "yaron-E92/AutoDev",
+            "RepoFullName": "FullHouseDevelopment/AutoDev",
             "BranchName": "feat/230",
             "AcceptedRoleArtifacts": {},
             execution.PROTOCOL_STATE_FIELD: protocol_version,

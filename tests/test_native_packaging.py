@@ -167,7 +167,7 @@ class NativePackagingTests(unittest.TestCase):
         self.assertIn("Version: 3.4.5", control)
         self.assertIn("Architecture: amd64", control)
         self.assertIn("Depends: libc6, git, gh", control)
-        self.assertIn("Homepage: https://github.com/yaron-E92/AutoDev", control)
+        self.assertIn("Homepage: https://github.com/FullHouseDevelopment/AutoDev", control)
         self.assertIn("X-AutoDev-License: GPL-3.0-only", control)
         self.assertNotIn("NOASSERTION", control)
         self.assertNotIn("systemd", control.casefold())

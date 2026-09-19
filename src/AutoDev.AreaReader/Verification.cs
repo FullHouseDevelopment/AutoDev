@@ -324,7 +324,7 @@ public static partial class AreaVerification
             "run_in() {",
             "  local dir=\"$1\"",
             "  shift",
-            "  echo \"+ ($dir) $*\"",
+            "  echo \"+ (${dir}) $*\"",
             "  (cd \"$REPO_ROOT/$dir\" && \"$@\")",
             "}",
             string.Empty,

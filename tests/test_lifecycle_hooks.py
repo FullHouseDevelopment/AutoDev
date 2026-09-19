@@ -113,19 +113,18 @@ class LifecycleHookTests(unittest.TestCase):
 
             def original(_repo: Path, _state: dict[str, object], **_kwargs) -> Path:
                 path = current / run_manifest.MANIFEST_NAME
-                run_manifest.save_manifest(
+                run_manifest.create_manifest(
                     path,
-                    {
-                        "schema_version": 1,
-                        "run_id": "test-run",
-                        "repository": "example/repo",
-                        "issue": 355,
-                    },
+                    repo_path=repo,
+                    github_repo="example/repo",
+                    issue_number=355,
+                    mode="issue-to-pr",
+                    base_sha="abc123",
+                    branch="feature/355-test",
+                    role_snapshots={},
                 )
                 return path
 
-            # _manifest_with_policy resolves the manifest path through role_resume,
-            # which is the canonical current-run manifest location.
             result = lifecycle_hooks._manifest_with_policy(original, repo, state)
             manifest = run_manifest.load_manifest(result)
 

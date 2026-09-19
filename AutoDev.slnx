@@ -1,5 +1,7 @@
 <Solution>
   <Project Path="src/AutoDev.Core/AutoDev.Core.csproj" />
+  <Project Path="src/AutoDev.AreaReader/AutoDev.AreaReader.csproj" />
   <Project Path="src/AutoDev.Cli/AutoDev.Cli.csproj" />
+  <Project Path="tests/AutoDev.AreaReader.Tests/AutoDev.AreaReader.Tests.csproj" />
   <Project Path="tests/AutoDev.CompatibilityTests/AutoDev.CompatibilityTests.csproj" />
 </Solution>

@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <AssemblyName>AutoDev.AreaReader</AssemblyName>
+    <RootNamespace>AutoDev.AreaReader</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../AutoDev.Core/AutoDev.Core.csproj" />
+  </ItemGroup>
+</Project>

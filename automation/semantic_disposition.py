@@ -267,6 +267,7 @@ def evaluate(repo: Path) -> dict[str, object]:
             "verdict": verdict,
         },
         "policy": lifecycle_policy.evidence_from_state(state),
+        "source_identity": str(state.get("VerifiedSourceIdentity", "") or ""),
         "state": _state_for(verdict, entries),
         "entries": entries,
         "created_at": _utc_now(),
@@ -284,6 +285,9 @@ def evaluate(repo: Path) -> dict[str, object]:
             str(existing.get("policy", {}).get("fingerprint", "")) == policy.fingerprint
             if isinstance(existing.get("policy"), dict)
             else False
+        ) and (
+            str(existing.get("source_identity", "") or "")
+            == str(state.get("VerifiedSourceIdentity", "") or "")
         )
         if same_identity and existing.get("state") == ACCEPTED_WITH_DEFERRALS:
             return existing
@@ -345,6 +349,7 @@ def accept_with_deferrals(repo: Path, *, reason: str = "") -> dict[str, object]:
         "accepted_at": disposition["accepted_at"],
         "verifier_sha256": verifier_sha,
         "policy_fingerprint": policy.fingerprint,
+        "source_identity": str(state.get("VerifiedSourceIdentity", "") or ""),
         "run_id": str(state.get("RunId", state.get("RunID", "")) or ""),
         "issue_number": int(state.get("IssueNumber", 0) or 0),
         "deferred_entry_ids": [
@@ -373,6 +378,7 @@ def accept_with_deferrals(repo: Path, *, reason: str = "") -> dict[str, object]:
             "artifact": ARTIFACT_NAME,
             "verifier_sha256": verifier_sha,
             "policy_fingerprint": policy.fingerprint,
+            "source_identity": str(disposition.get("source_identity", "") or ""),
             "accepted_at": disposition["accepted_at"],
         }
         manifest["failure"] = {}
@@ -396,6 +402,8 @@ def accepted_for_current_result(repo: Path, state: Mapping[str, object] | None =
     return (
         str(actual_state.get("SemanticDispositionVerifierSha256", "")) == _sha256(result_path)
         and str(actual_state.get("SemanticDispositionPolicyFingerprint", "")) == policy.fingerprint
+        and str(actual_state.get("SemanticSourceIdentity", "") or "")
+        == str(actual_state.get("VerifiedSourceIdentity", "") or "")
     )
 
 

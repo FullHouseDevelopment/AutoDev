@@ -69,3 +69,10 @@ When acceptance is valid, the semantic checkpoint is completed with both `verifi
 ## Repair-budget exhaustion
 
 A repair-budget exhaustion no longer has to be the final interpretation of the semantic result. The disposition layer evaluates the preserved verifier result at the semantic boundary. Critical/legacy findings remain blocked; non-critical lifecycle-aware blockers can be explicitly accepted with deferrals and then resume from the completed semantic checkpoint rather than manually editing run state.
+
+
+## Source binding
+
+A disposition is bound to the deterministic verified source identity in addition to the verifier-result SHA and lifecycle-policy fingerprint. Changing the verified source invalidates a prior accepted disposition even when the verifier artifact bytes are unchanged.
+
+This source identity is carried in `semantic-disposition.json`, the human-override audit record, and manifest disposition evidence so downstream delivery machinery can bind a later packaged commit/artifact back to the exact content that was semantically evaluated. A later packaging workflow must still prove that its concrete commit SHA corresponds to that verified source identity; the disposition artifact does not turn a pre-commit workspace identity into a release SHA by itself.

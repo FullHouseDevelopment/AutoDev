@@ -23,7 +23,7 @@ public static class RepositoryInspector
             || hints.Keywords.Any(keyword => lowered.Contains(keyword, StringComparison.Ordinal));
     }
 
-    public static RepoFileCollection CollectRepoFiles(DirectoryInfo repository)
+    public static RepoFileScan CollectRepoFiles(DirectoryInfo repository)
     {
         var files = new List<RepoFile>();
         var skippedLargeFiles = new List<SkippedLargeFile>();
@@ -352,7 +352,7 @@ public static class RepositoryInspector
         }
     }
 
-    private static IReadOnlySet<string> SourcePackageManifestPaths(
+    private static HashSet<string> SourcePackageManifestPaths(
         DirectoryInfo repository,
         IEnumerable<string> filePaths)
     {
@@ -425,7 +425,7 @@ public static class RepositoryInspector
     }
 
     private static PackageManager PackageManagerForRoot(
-        IReadOnlySet<string> filePaths,
+        HashSet<string> filePaths,
         string root)
     {
         var prefix = root == "." ? string.Empty : root + "/";
@@ -478,7 +478,7 @@ public static class RepositoryInspector
         }
     }
 
-    private static IReadOnlyList<string> ObjectPropertyNames(JsonElement root, string name)
+    private static string[] ObjectPropertyNames(JsonElement root, string name)
     {
         if (!root.TryGetProperty(name, out var property)
             || property.ValueKind != JsonValueKind.Object)

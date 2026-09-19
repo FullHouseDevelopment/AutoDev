@@ -13,7 +13,7 @@ public static class AreaPrompts
         string area,
         string bundle,
         AreaBundleMetadata metadata) =>
-        $"""
+        NormalizeNewlines($"""
         You are the area reader model for area: {area}.
 
         You are not the coder. Do not edit files. Do not design a patch. Read only the provided repository context and produce a factual handoff brief for a later synthesis reader and coder.
@@ -34,7 +34,7 @@ public static class AreaPrompts
 
         Area input bundle:
         {bundle}
-        """ + "\n";
+        """) + "\n";
 
     public static string BuildSynthesisPrompt(
         string issue,
@@ -55,7 +55,7 @@ public static class AreaPrompts
             briefBlocks.Append('\n');
         }
 
-        return $"""
+        return NormalizeNewlines($"""
         You are the synthesis reader model in an area-based local LLM benchmark.
 
         You are not the coder. Combine the area reader briefs into one compact coder handoff.
@@ -85,7 +85,7 @@ public static class AreaPrompts
 
         Area reader briefs:
         {briefBlocks}
-        """ + "\n";
+        """) + "\n";
     }
 
     public static string BuildPlannerPrompt(
@@ -94,7 +94,7 @@ public static class AreaPrompts
         RepositoryFacts detectedFacts,
         RecommendationMetadata recommendedGroups,
         IReadOnlyList<CommandGroup> commandGroups) =>
-        $"""
+        NormalizeNewlines($"""
         You are the coder model in an area-based local LLM benchmark.
 
         Consume the original issue and the synthesized handoff. Produce a minimal issue-scoped implementation or verification plan.
@@ -123,7 +123,10 @@ public static class AreaPrompts
 
         All available verification command groups:
         {PythonJson.Dumps(commandGroups)}
-        """ + "\n";
+        """) + "\n";
+
+    private static string NormalizeNewlines(string value) =>
+        value.Replace("\r\n", "\n", StringComparison.Ordinal).Replace('\r', '\n');
 }
 
 internal static class PythonJson

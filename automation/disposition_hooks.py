@@ -43,16 +43,17 @@ def _accepted_pr_and_ci(
         runner=runner,
     )
     if ci_passed:
-        return 0, workflow_stages.stage_payload(
+        payload = workflow_stages.stage_payload(
             repo,
             "CONTINUE",
             "pr-and-ci",
-            semantic_disposition=semantic_disposition.ACCEPTED_WITH_DEFERRALS,
             next_action="mark the PR ready for human review with semantic deferrals visible",
             max_repair_attempts=max_attempts,
         )
+        payload["semantic_disposition"] = semantic_disposition.ACCEPTED_WITH_DEFERRALS
+        return 0, payload
     if attempt >= max_attempts:
-        return 0, workflow_stages.stage_payload(
+        payload = workflow_stages.stage_payload(
             repo,
             "BLOCKED",
             "pr-and-ci",
@@ -62,7 +63,9 @@ def _accepted_pr_and_ci(
             next_action="mark the run blocked",
             max_repair_attempts=max_attempts,
         )
-    return 0, workflow_stages.stage_payload(
+        payload["semantic_disposition"] = semantic_disposition.ACCEPTED_WITH_DEFERRALS
+        return 0, payload
+    payload = workflow_stages.stage_payload(
         repo,
         "REPAIR",
         "pr-and-ci",
@@ -72,6 +75,8 @@ def _accepted_pr_and_ci(
         next_action="delegate the CI repair to autodev-fixer, increment the attempt, rerun local-check and semantic verification, then retry pr-and-ci",
         max_repair_attempts=max_attempts,
     )
+    payload["semantic_disposition"] = semantic_disposition.ACCEPTED_WITH_DEFERRALS
+    return 0, payload
 
 
 def _decorate_semantic_outcome(
@@ -110,14 +115,21 @@ def _decorate_semantic_outcome(
 
 
 def _ready_proof_wrapper(original):
-    def validate_ready_proof(current: Path, state: dict[str, object], *, runner):
+    def validate_ready_proof(
+        current: Path,
+        state: dict[str, object],
+        *,
+        runner=None,
+    ):
+        effective = state
         if semantic_disposition.accepted_for_current_result(current.parents[1], state):
             effective = dict(state)
             # The underlying proof function uses this value solely as the old
             # semantic shipment gate. Pass a view, never mutate durable state.
             effective["LastSemanticVerdict"] = "pass"
-            return original(current, effective, runner=runner)
-        return original(current, state, runner=runner)
+        if runner is None:
+            return original(current, effective)
+        return original(current, effective, runner=runner)
 
     validate_ready_proof._autodev_semantic_disposition = True  # type: ignore[attr-defined]
     return validate_ready_proof

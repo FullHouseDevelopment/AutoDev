@@ -6,7 +6,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Mapping
 
-from automation import lifecycle_policy, run_manifest, workflow_stages
+from automation import lifecycle_policy, run_manifest, verification_obligation_tracking, verification_obligations, workflow_stages
 
 
 ARTIFACT_NAME = "semantic-disposition.json"
@@ -244,6 +244,10 @@ def evaluate(repo: Path) -> dict[str, object]:
     if verdict not in {"pass", "repair", "blocked"}:
         raise SemanticDispositionError(f"unsupported semantic verifier verdict: {verdict!r}")
 
+    reconciled = verification_obligations.reconcile_verifier_result(repo, raw)
+    if reconciled:
+        verification_obligations.sync_current_state(repo, state)
+
     entries: list[dict[str, object]] = []
     findings = raw.get("findings", [])
     if isinstance(findings, list):
@@ -369,6 +373,18 @@ def accept_with_deferrals(repo: Path, *, reason: str = "") -> dict[str, object]:
     if str(state.get("Status", "")) == "Blocked":
         state["Status"] = "SemanticDispositionAccepted"
     workflow_stages.write_state(current, state)
+    current_obligations = verification_obligations.record_semantic_deferrals(
+        repo,
+        state,
+        disposition,
+    )
+    tracking_urls = verification_obligation_tracking.ensure_follow_up_issues(repo, state)
+    semantic_obligation_ids = [
+        str(item.get("id", ""))
+        for item in current_obligations
+        if item.get("kind") == verification_obligations.KIND_SEMANTIC
+        and item.get("status") == verification_obligations.OPEN
+    ]
 
     manifest_path = current / run_manifest.MANIFEST_NAME
     if manifest_path.is_file():
@@ -380,6 +396,8 @@ def accept_with_deferrals(repo: Path, *, reason: str = "") -> dict[str, object]:
             "policy_fingerprint": policy.fingerprint,
             "source_identity": str(disposition.get("source_identity", "") or ""),
             "accepted_at": disposition["accepted_at"],
+            "deferred_obligation_ids": semantic_obligation_ids,
+            "tracking_urls": tracking_urls,
         }
         manifest["failure"] = {}
         run_manifest.save_manifest(manifest_path, manifest)

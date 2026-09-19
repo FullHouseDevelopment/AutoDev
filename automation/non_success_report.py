@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from automation import external_error_sanitizer, run_manifest, workflow_stages
+from automation import external_error_sanitizer, run_manifest, verification_obligations, workflow_stages
 
 
 REPORT_NAME = "non-success-report.md"
@@ -203,6 +203,11 @@ def render_report(repo: Path, payload: dict[str, object]) -> str:
                 "```",
             ]
         )
+
+    if not detached_operation:
+        obligation_lines = verification_obligations.status_lines(repo)
+        lines.extend(["", "## Deferred obligations", ""])
+        lines.extend(f"- {redact(item)}" for item in obligation_lines)
 
     lines.extend(["", "## Next steps", ""])
     lines.extend(f"{index}. {redact(step)}" for index, step in enumerate(next_steps, start=1))

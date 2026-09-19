@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from automation import development_policy, development_setup, privacy_grant_commands, queue_contract, queue_github, queue_policy, semver_intent, ux_policy
+from automation import development_policy, development_setup, privacy_grant_commands, queue_contract, queue_github, queue_policy, semver_intent, ux_policy, verification_obligation_tracking
 
 from automation import opencode_adapter_models
 
@@ -120,7 +120,8 @@ def _load_repo_config(repo: Path) -> dict[str, object]:
             default_branch="main",
             source=str(path),
         )
-    except (ux_policy.UXPolicyError, development_policy.DevelopmentPolicyError) as exc:
+        verification_obligation_tracking.follow_up_policy(repo)
+    except (ux_policy.UXPolicyError, development_policy.DevelopmentPolicyError, verification_obligation_tracking.core.VerificationObligationError) as exc:
         raise RepoSetupError(str(exc)) from exc
     if "default_semver_intent" in value:
         raw_semver = value.get("default_semver_intent")

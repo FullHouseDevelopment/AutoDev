@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text;
 using System.Text.Encodings.Web;
 using System.Text.Json;
@@ -130,7 +131,7 @@ internal static class PythonJson
     private static readonly JsonSerializerOptions SerializerOptions = new()
     {
         PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
-        Encoder = JavaScriptEncoder.Default,
+        Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
     };
 
     public static string Dumps(object value)
@@ -147,13 +148,31 @@ internal static class PythonJson
                    new JsonWriterOptions
                    {
                        Indented = true,
-                       Encoder = JavaScriptEncoder.Default,
+                       Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
                    }))
         {
             WriteSorted(writer, node);
         }
 
-        return Encoding.UTF8.GetString(stream.ToArray());
+        return EscapeNonAscii(Encoding.UTF8.GetString(stream.ToArray()));
+    }
+
+    private static string EscapeNonAscii(string value)
+    {
+        var result = new StringBuilder(value.Length);
+        foreach (var character in value)
+        {
+            if (character <= 0x7f)
+            {
+                result.Append(character);
+                continue;
+            }
+
+            result.Append("\\u");
+            result.Append(((int)character).ToString("x4", CultureInfo.InvariantCulture));
+        }
+
+        return result.ToString();
     }
 
     private static void WriteSorted(Utf8JsonWriter writer, JsonNode node)

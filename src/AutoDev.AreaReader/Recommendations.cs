@@ -249,7 +249,7 @@ public static class CommandGroupRecommendations
 
     private static List<string> FilterUnique(
         IEnumerable<string> values,
-        IReadOnlySet<string> allowed)
+        HashSet<string> allowed)
     {
         var filtered = new List<string>();
         var seen = new HashSet<string>(StringComparer.Ordinal);

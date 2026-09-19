@@ -147,7 +147,7 @@ public static class CommandGroupRecommendations
     private static RecommendationMetadata BuildMetadata(
         IReadOnlyList<string> available,
         IEnumerable<string> recommended,
-        IReadOnlySet<string> availableSet)
+        HashSet<string> availableSet)
     {
         var conditional = ConditionalCommandGroups
             .Where(pair => availableSet.Contains(pair.Key))
@@ -159,9 +159,9 @@ public static class CommandGroupRecommendations
             conditional);
     }
 
-    private static IReadOnlyList<string> DocumentationOnlyCommandGroups(
+    private static string[] DocumentationOnlyCommandGroups(
         IEnumerable<string> changedPaths,
-        IReadOnlySet<string> availableSet)
+        HashSet<string> availableSet)
     {
         var paths = changedPaths.Select(path => NormalizePath(path).ToLowerInvariant()).ToArray();
         var groups = new List<string> { "env" };
@@ -247,7 +247,7 @@ public static class CommandGroupRecommendations
     private static bool ContainsAny(string value, IEnumerable<string> terms) =>
         terms.Any(term => value.Contains(term, StringComparison.Ordinal));
 
-    private static IReadOnlyList<string> FilterUnique(
+    private static List<string> FilterUnique(
         IEnumerable<string> values,
         IReadOnlySet<string> allowed)
     {

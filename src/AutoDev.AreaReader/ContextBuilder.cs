@@ -26,9 +26,9 @@ public static class AreaContextBuilder
             + "Area hint keywords:\n"
             + $"{string.Join(", ", AreaReaderSettings.AreaHints[area].Keywords)}\n\n"
             + fileMapText
-            + "Repository map:\n"
+            + "\nRepository map:\n"
             + repositoryMap
-            + "File excerpts:\n";
+            + "\nFile excerpts:\n";
 
         var parts = new List<string> { header };
         var remaining = maxChars - PythonLength(header);

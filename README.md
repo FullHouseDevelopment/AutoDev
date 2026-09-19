@@ -154,7 +154,7 @@ implementation
 
 Semantic verification uses strict artifacts and bounded repair budgets. Optional exact-source Windows verification can be required by repository policy.
 
-See [`docs/semantic-verification.md`](docs/semantic-verification.md), [`docs/semantic-repair-budgets.md`](docs/semantic-repair-budgets.md), and [`docs/windows-verification.md`](docs/windows-verification.md).
+See [`docs/semantic-verification.md`](docs/semantic-verification.md), [`docs/semantic-repair-budgets.md`](docs/semantic-repair-budgets.md), [`docs/deferred-obligations.md`](docs/deferred-obligations.md), and [`docs/windows-verification.md`](docs/windows-verification.md).
 
 ## Architecture
 

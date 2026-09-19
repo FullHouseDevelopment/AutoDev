@@ -11,9 +11,7 @@ from automation.windows_verification_config import (
 from automation.windows_verification_manifest import (
     sync_manifest,
 )
-from automation.windows_verification_storage import (
-    _write_json,
-)
+from automation import verification_obligations
 
 def record_local_deferred_obligations(
     repo: Path,
@@ -37,23 +35,22 @@ def record_local_deferred_obligations(
             }
         )
 
-    state["DeferredVerificationObligations"] = obligations
     state["WindowsVerificationRequired"] = required
     state["WindowsVerificationConfig"] = safe_config_metadata(config)
     state.pop("WindowsVerificationProof", None)
     state.pop("LastWindowsVerificationFailure", None)
-    _write_json(current / "state.json", state)
-    _write_json(
-        current / "deferred-verification.json",
-        {
-            "obligations": obligations,
+    persisted = verification_obligations.record_platform_obligations(
+        repo,
+        state,
+        obligations,
+        extra_artifact={
             "windows_required": required,
             "windows_config": safe_config_metadata(config),
         },
     )
     sync_manifest(repo, state)
     return {
-        "deferred_verification_obligations": obligations,
+        "deferred_verification_obligations": persisted,
         "windows_verification_required": required,
         "windows_verification_config": safe_config_metadata(config),
     }

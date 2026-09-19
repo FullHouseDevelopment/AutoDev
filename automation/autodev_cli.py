@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import replace
 
-from automation import claim_cli, cli_help, config_cli, continuation, continuation_recovery, manage_cli, notification_cli, opencode_adapter_contract, privacy_grant_cli, product_runtime, revision_cli, scheduler_health_cli, semver_intent, tui_cli, ux_cli, ux_help
+from automation import claim_cli, cli_help, config_cli, continuation, continuation_recovery, manage_cli, notification_cli, obligations_cli, opencode_adapter_contract, privacy_grant_cli, product_runtime, revision_cli, scheduler_health_cli, semver_intent, tui_cli, ux_cli, ux_help
 
 import os
 import sys
@@ -31,6 +31,7 @@ if _resume_help is not None:
         examples=resume_examples,
     )
 manage_cli.register_help()
+obligations_cli.register_help()
 revision_cli.register_help()
 tui_cli.register_help()
 ux_help.register_help()
@@ -268,6 +269,8 @@ def _dispatch(
         return notification_cli.run_cli(rest)
     if command == "manage":
         return manage_cli.run_cli(rest)
+    if command == "obligations":
+        return obligations_cli.run_cli(rest)
     if command == "privacy":
         return privacy_grant_cli.run_cli(rest)
     if command == "ux":

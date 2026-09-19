@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from automation import opencode_adapter_handoff
 
-from automation import opencode_adapter_contract
+from automation import opencode_adapter_contract, verification_obligations
 
 from pathlib import Path
 
@@ -88,6 +88,13 @@ def install_opencode_hooks() -> None:
             original_checkpoint_stage(repo, name, payload, attempt)
 
         if windows_success:
+            verification_obligations.resolve_current(
+                repo,
+                state,
+                kind=verification_obligations.KIND_PLATFORM,
+                reason="deferred platform verification completed successfully",
+            )
+            state = workflow_stages.read_state(current)
             artifacts = [current / RESULT_FILE] if (current / RESULT_FILE).is_file() else []
             run_manifest.complete_stage(
                 path,

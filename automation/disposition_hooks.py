@@ -6,6 +6,7 @@ from automation import (
     disposition_transition,
     opencode_resume_status,
     semantic_disposition,
+    verification_obligations,
     workflow_dispatch,
     workflow_stages,
 )
@@ -136,8 +137,13 @@ def _ready_proof_wrapper(original):
 
 
 def _status_with_disposition(original, repo: Path, *args, **kwargs) -> str:
-    text = original(repo, *args, **kwargs).rstrip("\n")
-    return text + "\n" + semantic_disposition.status_line(Path(repo)) + "\n"
+    resolved = Path(repo).expanduser().resolve()
+    text = original(resolved, *args, **kwargs).rstrip("\n")
+    lines = [
+        semantic_disposition.status_line(resolved),
+        *verification_obligations.status_lines(resolved),
+    ]
+    return text + "\n" + "\n".join(lines) + "\n"
 
 
 def install() -> None:

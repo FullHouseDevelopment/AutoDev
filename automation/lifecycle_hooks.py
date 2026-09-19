@@ -144,13 +144,19 @@ def _status_with_policy(
     text = original(repo, *args, **kwargs).rstrip("\n")
     resolved = Path(repo).expanduser().resolve()
     current = resolved / workflow_stages.CURRENT_DIR
+    state_path = current / "state.json"
     try:
-        state = workflow_stages.read_state(current)
-        line = lifecycle_policy.status_line(state)
-        effective = lifecycle_policy.load_lifecycle_policy(resolved)
-        prepared = lifecycle_policy.policy_from_state(state)
-        if effective.fingerprint != prepared.fingerprint:
-            line += " | POLICY CHANGED: resume requires re-evaluation"
+        if not state_path.is_file():
+            effective = lifecycle_policy.load_lifecycle_policy(resolved)
+            line = lifecycle_policy.status_line(lifecycle_policy.state_fields(effective))
+            line += " (no active run)"
+        else:
+            state = workflow_stages.read_state(current)
+            line = lifecycle_policy.status_line(state)
+            effective = lifecycle_policy.load_lifecycle_policy(resolved)
+            prepared = lifecycle_policy.policy_from_state(state)
+            if effective.fingerprint != prepared.fingerprint:
+                line += " | POLICY CHANGED: resume requires re-evaluation"
     except Exception as exc:
         line = f"Delivery policy: invalid ({exc})"
     return text + "\n" + line + "\n"

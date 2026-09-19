@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from automation import opencode_adapter_models, semver_intent
+from automation import disposition_transition, opencode_adapter_models, semantic_disposition, semver_intent
 
 from automation import opencode_adapter_contract
 
@@ -61,6 +61,16 @@ def run(argv: list[str] | None = None) -> int:
     parser.add_argument("--arguments", default="")
     parser.add_argument("--resume", action="store_true")
     parser.add_argument(
+        "--accept-with-deferrals",
+        action="store_true",
+        help="accept current non-critical semantic findings as durable deferrals before resume",
+    )
+    parser.add_argument(
+        "--deferral-reason",
+        default="",
+        help="auditable human reason for overriding blocking non-critical semantic findings",
+    )
+    parser.add_argument(
         "--runtime",
         default="",
         help="role runtime override (default: configured runtime, then opencode)",
@@ -78,6 +88,15 @@ def run(argv: list[str] | None = None) -> int:
     sys.stdout = proxy
     try:
         try:
+            if args.accept_with_deferrals:
+                if not args.resume:
+                    raise semantic_disposition.SemanticDispositionError(
+                        "--accept-with-deferrals is only valid with resume"
+                    )
+                disposition_transition.accept(
+                    repo,
+                    reason=args.deferral_reason,
+                )
             semver_override = (
                 semver_intent.normalize_intent(args.semver, source="explicit")
                 if args.semver.strip()
@@ -105,6 +124,7 @@ def run(argv: list[str] | None = None) -> int:
             role_runtime.RoleRuntimeError,
             role_resume.RoleResumeError,
             opencode_adapter_contract.OpenCodeAdapterError,
+            semantic_disposition.SemanticDispositionError,
             workflow_stages.WorkflowStageError,
             OSError,
             ValueError,

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from automation import opencode_adapter_models, semantic_disposition, semver_intent
+from automation import disposition_transition, opencode_adapter_models, semantic_disposition, semver_intent
 
 from automation import opencode_adapter_contract
 
@@ -93,7 +93,7 @@ def run(argv: list[str] | None = None) -> int:
                     raise semantic_disposition.SemanticDispositionError(
                         "--accept-with-deferrals is only valid with resume"
                     )
-                semantic_disposition.accept_with_deferrals(
+                disposition_transition.accept(
                     repo,
                     reason=args.deferral_reason,
                 )

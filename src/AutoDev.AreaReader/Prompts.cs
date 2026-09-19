@@ -12,27 +12,28 @@ public static class AreaPrompts
         string area,
         string bundle,
         AreaBundleMetadata metadata) =>
-        $"""You are the area reader model for area: {area}.
+        $"""
+        You are the area reader model for area: {area}.
 
-You are not the coder. Do not edit files. Do not design a patch. Read only the provided repository context and produce a factual handoff brief for a later synthesis reader and coder.
+        You are not the coder. Do not edit files. Do not design a patch. Read only the provided repository context and produce a factual handoff brief for a later synthesis reader and coder.
 
-Your brief must:
-- Include exact file paths for every repository fact you mention.
-- Distinguish visible facts from inference.
-- Stay factual; do not invent shell commands or implementation steps.
-- Name local verification needs for this area conceptually, not as freehand command lines.
-- Identify uncertainties and missing files.
-- If this area is placeholder-only or not actually present, say so clearly.
+        Your brief must:
+        - Include exact file paths for every repository fact you mention.
+        - Distinguish visible facts from inference.
+        - Stay factual; do not invent shell commands or implementation steps.
+        - Name local verification needs for this area conceptually, not as freehand command lines.
+        - Identify uncertainties and missing files.
+        - If this area is placeholder-only or not actually present, say so clearly.
 
-Original issue:
-{issue}
+        Original issue:
+        {issue}
 
-Area bundle metadata:
-{PythonJson.Dumps(metadata)}
+        Area bundle metadata:
+        {PythonJson.Dumps(metadata)}
 
-Area input bundle:
-{bundle}
-""";
+        Area input bundle:
+        {bundle}
+        """;
 
     public static string BuildSynthesisPrompt(
         string issue,
@@ -45,46 +46,49 @@ Area input bundle:
         foreach (var result in areaResults)
         {
             briefBlocks.Append(
-                $"""## Area: {result.Area}
+                $"""
+                ## Area: {result.Area}
 
-Reader metadata:
-{PythonJson.Dumps(result.Metadata)}
+                Reader metadata:
+                {PythonJson.Dumps(result.Metadata)}
 
-Reader brief:
-{result.Brief}
-""");
+                Reader brief:
+                {result.Brief}
+                """);
+            briefBlocks.Append('\n');
         }
 
-        return $"""You are the synthesis reader model in an area-based local LLM benchmark.
+        return $"""
+        You are the synthesis reader model in an area-based local LLM benchmark.
 
-You are not the coder. Combine the area reader briefs into one compact coder handoff.
+        You are not the coder. Combine the area reader briefs into one compact coder handoff.
 
-Your handoff must:
-- Preserve area-specific details.
-- List routed areas.
-- List repo/application surfaces.
-- List relevant files by area.
-- Use the deterministic facts below as the source of truth for repository structure.
-- Refer to named verification command groups instead of inventing shell commands.
-- Include cross-area risks.
-- Include constraints and uncertainties.
-- Do not invent files or commands.
+        Your handoff must:
+        - Preserve area-specific details.
+        - List routed areas.
+        - List repo/application surfaces.
+        - List relevant files by area.
+        - Use the deterministic facts below as the source of truth for repository structure.
+        - Refer to named verification command groups instead of inventing shell commands.
+        - Include cross-area risks.
+        - Include constraints and uncertainties.
+        - Do not invent files or commands.
 
-Original issue:
-{issue}
+        Original issue:
+        {issue}
 
-Routed areas:
-{string.Join(", ", areas)}
+        Routed areas:
+        {string.Join(", ", areas)}
 
-Deterministic repository facts:
-{PythonJson.Dumps(detectedFacts)}
+        Deterministic repository facts:
+        {PythonJson.Dumps(detectedFacts)}
 
-Available verification command groups:
-{PythonJson.Dumps(commandGroups)}
+        Available verification command groups:
+        {PythonJson.Dumps(commandGroups)}
 
-Area reader briefs:
-{briefBlocks}
-""";
+        Area reader briefs:
+        {briefBlocks}
+        """;
     }
 
     public static string BuildPlannerPrompt(
@@ -93,35 +97,36 @@ Area reader briefs:
         RepositoryFacts detectedFacts,
         RecommendationMetadata recommendedGroups,
         IReadOnlyList<CommandGroup> commandGroups) =>
-        $"""You are the coder model in an area-based local LLM benchmark.
+        $"""
+        You are the coder model in an area-based local LLM benchmark.
 
-Consume the original issue and the synthesized handoff. Produce a minimal issue-scoped implementation or verification plan.
+        Consume the original issue and the synthesized handoff. Produce a minimal issue-scoped implementation or verification plan.
 
-Rules:
-- For verification-only issues, list "files to inspect," not "files likely needing changes."
-- Name exact files only when supported by the handoff.
-- Select verification by named command group from the deterministic command group list.
-- Do not write freehand shell commands.
-- Do not use placeholder commands.
-- Do not invent test projects or paths.
-- Do not refactor unrelated code.
-- Be strict about uncertainty.
+        Rules:
+        - For verification-only issues, list "files to inspect," not "files likely needing changes."
+        - Name exact files only when supported by the handoff.
+        - Select verification by named command group from the deterministic command group list.
+        - Do not write freehand shell commands.
+        - Do not use placeholder commands.
+        - Do not invent test projects or paths.
+        - Do not refactor unrelated code.
+        - Be strict about uncertainty.
 
-Original issue:
-{issue}
+        Original issue:
+        {issue}
 
-Synthesized handoff:
-{synthesisBrief}
+        Synthesized handoff:
+        {synthesisBrief}
 
-Deterministic repository facts:
-{PythonJson.Dumps(detectedFacts)}
+        Deterministic repository facts:
+        {PythonJson.Dumps(detectedFacts)}
 
-Recommended verification command groups:
-{PythonJson.Dumps(recommendedGroups)}
+        Recommended verification command groups:
+        {PythonJson.Dumps(recommendedGroups)}
 
-All available verification command groups:
-{PythonJson.Dumps(commandGroups)}
-""";
+        All available verification command groups:
+        {PythonJson.Dumps(commandGroups)}
+        """;
 }
 
 internal static class PythonJson

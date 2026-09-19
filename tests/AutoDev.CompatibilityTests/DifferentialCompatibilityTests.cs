@@ -1,13 +1,13 @@
 using System.Diagnostics;
 using System.Text;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
+using NUnit.Framework;
 
 namespace AutoDev.CompatibilityTests;
 
-[TestClass]
+[TestFixture]
 public sealed class DifferentialCompatibilityTests
 {
-    [TestMethod]
+    [Test]
     public async Task DifferentialHarness_NormalizesEquivalentProcessObservations()
     {
         var repositoryRoot = RepositoryRoot.Find();
@@ -19,10 +19,10 @@ public sealed class DifferentialCompatibilityTests
 
         var result = await DifferentialScenario.ObserveAsync(reference, candidate, repositoryRoot);
 
-        Assert.IsTrue(result.Equivalent, result.DescribeMismatch());
+        Assert.That(result.Equivalent, Is.True, result.DescribeMismatch());
     }
 
-    [TestMethod]
+    [Test]
     public async Task DifferentialHarness_CanObservePythonReferenceCliAndCandidateHost()
     {
         var repositoryRoot = RepositoryRoot.Find();
@@ -34,13 +34,13 @@ public sealed class DifferentialCompatibilityTests
 
         var result = await DifferentialScenario.ObserveAsync(reference, candidate, repositoryRoot);
 
-        Assert.AreEqual(0, result.Reference.ExitCode);
-        Assert.AreEqual(0, result.Candidate.ExitCode);
-        StringAssert.Contains(result.Reference.StdOut, "autodev");
-        StringAssert.Contains(result.Candidate.StdOut, "migration-scaffold-ready");
+        Assert.That(result.Reference.ExitCode, Is.Zero);
+        Assert.That(result.Candidate.ExitCode, Is.Zero);
+        Assert.That(result.Reference.StdOut, Does.Contain("autodev"));
+        Assert.That(result.Candidate.StdOut, Does.Contain("migration-scaffold-ready"));
     }
 
-    [TestMethod]
+    [Test]
     public async Task CandidateHost_DoesNotExposeProductionCommandsYet()
     {
         var repositoryRoot = RepositoryRoot.Find();
@@ -48,14 +48,14 @@ public sealed class DifferentialCompatibilityTests
             CandidateHost(repositoryRoot),
             repositoryRoot);
 
-        Assert.AreEqual(2, observation.ExitCode);
-        StringAssert.Contains(observation.StdErr, "no product commands have been migrated");
+        Assert.That(observation.ExitCode, Is.EqualTo(2));
+        Assert.That(observation.StdErr, Does.Contain("no product commands have been migrated"));
     }
 
     private static CommandSpec CandidateHost(string repositoryRoot, params string[] arguments)
     {
         var assemblyPath = Path.Combine(AppContext.BaseDirectory, "AutoDev.Cli.dll");
-        Assert.IsTrue(File.Exists(assemblyPath), $"Expected candidate host at {assemblyPath}");
+        Assert.That(File.Exists(assemblyPath), Is.True, $"Expected candidate host at {assemblyPath}");
         return new CommandSpec("dotnet", [assemblyPath, .. arguments], repositoryRoot);
     }
 

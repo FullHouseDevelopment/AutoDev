@@ -6,7 +6,7 @@ from automation import windows_verification_hooks
 
 import sys
 
-from automation import ci_outcomes, context_optimization, execution_classification_evidence, execution_classification_hooks, opencode_github_entrypoint, opencode_role_entrypoint, opencode_runtime, pr_head_sync, privacy_consent, revision_hooks, role_workflow_hooks, windows_semantic_order
+from automation import ci_outcomes, context_optimization, execution_classification_evidence, execution_classification_hooks, lifecycle_hooks, opencode_github_entrypoint, opencode_role_entrypoint, opencode_runtime, pr_head_sync, privacy_consent, revision_hooks, role_workflow_hooks, windows_semantic_order
 
 
 COORDINATE_COMMAND = "coordinate"
@@ -41,6 +41,10 @@ def run(argv: list[str] | None = None) -> int:
     # after revision so it composes with the final effective coordinator and
     # role wrappers instead of creating a parallel workflow engine.
     already_satisfied_hooks.install()
+    # Lifecycle/work-exposure is shipment-policy context, not verifier authority.
+    # Install this last so it guards the final preparation/resume/status surfaces
+    # without changing semantic verification behavior.
+    lifecycle_hooks.install()
     values = list(sys.argv[1:] if argv is None else argv)
     if values and values[0] == PRIVACY_COMMAND:
         return privacy_grant_cli.run_cli(values[1:])

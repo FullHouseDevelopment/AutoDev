@@ -16,7 +16,7 @@ public sealed record SkippedLargeFile(string Path, long Bytes);
 
 public sealed record SkippedUnreadableFile(string Path, string Reason);
 
-public sealed record RepoFileCollection(
+public sealed record RepoFileScan(
     IReadOnlyList<RepoFile> Files,
     IReadOnlyList<SkippedLargeFile> SkippedLargeFiles,
     IReadOnlyList<SkippedUnreadableFile> SkippedUnreadableFiles);

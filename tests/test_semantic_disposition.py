@@ -86,6 +86,7 @@ class SemanticDispositionTests(unittest.TestCase):
             )
 
             self.assertEqual(accepted["state"], semantic_disposition.ACCEPTED_WITH_DEFERRALS)
+            self.assertEqual(accepted["source_identity"], "source-identity")
             self.assertEqual((current / "verification-result.json").read_bytes(), before)
             state = workflow_stages.read_state(current)
             self.assertEqual(state["LastSemanticVerdict"], "repair")
@@ -193,6 +194,14 @@ class SemanticDispositionTests(unittest.TestCase):
             first = semantic_disposition.accept_with_deferrals(repo, reason="dogfood now")
             second = semantic_disposition.accept_with_deferrals(repo, reason="ignored duplicate")
             self.assertEqual(first["override"], second["override"])
+            self.assertTrue(semantic_disposition.accepted_for_current_result(repo))
+
+            state = workflow_stages.read_state(current)
+            state["VerifiedSourceIdentity"] = "different-source-identity"
+            workflow_stages.write_state(current, state)
+            self.assertFalse(semantic_disposition.accepted_for_current_result(repo))
+            state["VerifiedSourceIdentity"] = "source-identity"
+            workflow_stages.write_state(current, state)
             self.assertTrue(semantic_disposition.accepted_for_current_result(repo))
 
             self._result(

@@ -136,7 +136,7 @@ public static partial class AreaVerification
                     ? "Detected web package scripts."
                     : "No web lint/test/build scripts detected."));
 
-        var mauiHelper = facts.MauiHelperScripts.FirstOrDefault();
+        var mauiHelper = facts.MauiHelperScripts.Count > 0 ? facts.MauiHelperScripts[0] : null;
         var mauiDoctorCommands = new List<VerificationCommand>();
         if (facts.MauiProjects.Count > 0)
         {

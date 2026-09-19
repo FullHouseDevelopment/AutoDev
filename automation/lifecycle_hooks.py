@@ -156,20 +156,29 @@ def _status_with_policy(
     return text + "\n" + line + "\n"
 
 
+def _install_prepare_hook(module: object) -> None:
+    current_prepare = getattr(module, "ensure_prepared_issue")
+    if getattr(current_prepare, "_autodev_lifecycle_policy", False):
+        return
+    original_prepare = current_prepare
+
+    def ensure_prepared_issue(repo: Path, arguments: str, **kwargs) -> Path:
+        return _prepare_with_policy(original_prepare, repo, arguments, **kwargs)
+
+    ensure_prepared_issue._autodev_lifecycle_policy = True  # type: ignore[attr-defined]
+    setattr(module, "ensure_prepared_issue", ensure_prepared_issue)
+
+
 def install() -> None:
     global _INSTALLED
     if _INSTALLED:
         return
 
-    current_prepare = workflow_dispatch.ensure_prepared_issue
-    if not getattr(current_prepare, "_autodev_lifecycle_policy", False):
-        original_prepare = current_prepare
-
-        def ensure_prepared_issue(repo: Path, arguments: str, **kwargs) -> Path:
-            return _prepare_with_policy(original_prepare, repo, arguments, **kwargs)
-
-        ensure_prepared_issue._autodev_lifecycle_policy = True  # type: ignore[attr-defined]
-        workflow_dispatch.ensure_prepared_issue = ensure_prepared_issue
+    # AutoDev has multiple frontend paths that retain their own imported binding
+    # to preparation. Guard each exported surface so lifecycle persistence is not
+    # dependent on which CLI/runtime adapter invoked the workflow.
+    _install_prepare_hook(workflow_dispatch)
+    _install_prepare_hook(workflow_stages)
 
     current_create = role_resume.create_manifest
     if not getattr(current_create, "_autodev_lifecycle_policy", False):

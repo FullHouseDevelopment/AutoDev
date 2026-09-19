@@ -180,6 +180,17 @@ def materialize_structured_output(
     current = repo / ".autodev-run" / "current"
     current.mkdir(parents=True, exist_ok=True)
 
+    if contract.name == "autodev.dogfood-decomposition":
+        from automation import dogfood_roadmap
+
+        value = dogfood_roadmap.validate_proposal_payload(payload)
+        target = current / contract.output_artifact
+        target.write_text(
+            json.dumps(value, indent=2, sort_keys=True, ensure_ascii=False) + "\n",
+            encoding="utf-8",
+        )
+        return target
+
     if contract.role == "reader":
         allowed = {"handoff_markdown", "repository_evidence", "ux"}
         unknown = sorted(set(payload) - allowed)

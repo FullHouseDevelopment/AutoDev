@@ -351,6 +351,7 @@ def record_product_findings(
     *,
     origin_kind: str,
     source_identity: str = "",
+    sync_active: bool = True,
 ) -> list[dict[str, object]]:
     allowed = {
         ORIGIN_HUMAN_DOGFOOD,
@@ -392,6 +393,7 @@ def record_product_findings(
                 "criterion": criterion,
                 "finding": finding,
                 "severity": str(item.get("severity", "") or ""),
+                "classification": str(item.get("classification", "") or ""),
                 "source_identity": source_identity.strip()
                 or str(item.get("source_identity", "") or ""),
                 "origin_run_id": _run_id(state),
@@ -415,7 +417,13 @@ def record_product_findings(
         )
     if records:
         _upsert_many(repo, records)
-    return sync_current_state(repo, state)
+    if sync_active:
+        return sync_current_state(repo, state)
+    return [
+        item
+        for item in all_obligations(repo)
+        if str(item.get("id", "")) in {str(record.get("id", "")) for record in records}
+    ]
 
 
 def record_semantic_deferrals(

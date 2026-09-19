@@ -1,0 +1,98 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "strategy",
+    "rationale",
+    "dogfood_readiness",
+    "deep_contract_preserved",
+    "slices",
+    "deferred_requirements"
+  ],
+  "properties": {
+    "strategy": {
+      "type": "string",
+      "enum": ["single-mvp", "spine"]
+    },
+    "rationale": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 4000
+    },
+    "dogfood_readiness": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 2000
+    },
+    "deep_contract_preserved": {
+      "const": true
+    },
+    "slices": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 12,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "title",
+          "body",
+          "journey",
+          "vertical_value",
+          "real_dependencies",
+          "deferred_requirements"
+        ],
+        "properties": {
+          "title": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 180
+          },
+          "body": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 12000
+          },
+          "journey": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2000
+          },
+          "vertical_value": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 2000
+          },
+          "real_dependencies": {
+            "type": "array",
+            "maxItems": 32,
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 500
+            }
+          },
+          "deferred_requirements": {
+            "type": "array",
+            "maxItems": 64,
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 1000
+            }
+          }
+        }
+      }
+    },
+    "deferred_requirements": {
+      "type": "array",
+      "maxItems": 128,
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 1000
+      }
+    }
+  }
+}

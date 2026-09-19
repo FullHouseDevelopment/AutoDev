@@ -11,7 +11,7 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Callable
 
-from automation import run_manifest, workflow_stages
+from automation import dogfood_application, dogfood_roadmap, run_manifest, workflow_stages
 from automation.queue_contract import DEFAULT_LIMIT, QueueError, QueueIssue, QueueState
 from automation.queue_github import _json_result, _run_gh
 from automation.queue_workflow import inspect_queue, reconcile_queue
@@ -422,6 +422,19 @@ def _roadmap_rank(
     return (2, len(roadmap.priority), _oldest_key(issue), "oldest")
 
 
+def _selection_rank(
+    roadmap: Roadmap,
+    issue: QueueIssue,
+    dogfood_next: tuple[int, str] | None,
+) -> tuple[int, int, tuple[bool, str, int], str]:
+    base = _roadmap_rank(roadmap, issue)
+    if base[3] != "oldest":
+        return base
+    if dogfood_next is not None and issue.number == dogfood_next[0]:
+        return (2, 0, _oldest_key(issue), "roadmap:dogfood")
+    return (3, len(roadmap.priority), _oldest_key(issue), "oldest")
+
+
 def _roadmap_ineligible(states: list[QueueState], roadmap: Roadmap) -> tuple[str, ...]:
     messages: list[str] = []
     for rule in roadmap.priority:
@@ -519,6 +532,18 @@ def select_next(
         )
 
     roadmap = load_roadmap(repo)
+    dogfood_next: tuple[int, str] | None = None
+    dogfood_path = ""
+    if dogfood_roadmap.dogfood_priority_active(repo):
+        projection_path = repo / dogfood_roadmap.PROJECTION_PATH
+        if projection_path.is_file():
+            projection = dogfood_application.reconcile_projection(
+                repo,
+                github_repo,
+                runner=runner,
+            )
+            dogfood_next = dogfood_roadmap.active_next_slice_issue(projection)
+            dogfood_path = dogfood_roadmap.PROJECTION_PATH.as_posix()
     active_prs = active_autodev_prs(repo, github_repo, runner=runner)
     eligible = [
         state.issue
@@ -528,6 +553,16 @@ def select_next(
         and state.issue.number not in excluded
     ]
     ineligible = list(_roadmap_ineligible(states, roadmap))
+    if dogfood_next is not None:
+        dogfood_state = next(
+            (state for state in states if state.issue.number == dogfood_next[0]),
+            None,
+        )
+        if dogfood_state is not None and dogfood_state.reason != "ready":
+            ineligible.append(
+                f"dogfood spine {dogfood_next[1]} next slice #{dogfood_next[0]} "
+                f"is {dogfood_state.reason}; dogfood priority never overrides queue eligibility"
+            )
     for state in states:
         if state.reason == "ready" and state.issue.number in active_prs:
             ineligible.append(
@@ -549,12 +584,20 @@ def select_next(
             dry_run=dry_run,
         )
 
-    ranked = sorted(eligible, key=lambda issue: _roadmap_rank(roadmap, issue)[:3])
+    ranked = sorted(
+        eligible,
+        key=lambda issue: _selection_rank(roadmap, issue, dogfood_next)[:3],
+    )
     winner = ranked[0]
-    rank = _roadmap_rank(roadmap, winner)
+    rank = _selection_rank(roadmap, winner, dogfood_next)
     source = rank[3]
     if source == "oldest":
         explanation = "oldest eligible issue won the deterministic fallback"
+    elif source == "roadmap:dogfood":
+        explanation = (
+            f"eligible issue is the next unresolved slice in dogfood spine {dogfood_next[1] if dogfood_next else ''}; "
+            "explicit roadmap priorities and queue blockers still outrank dogfood geometry"
+        )
     else:
         explanation = f"eligible issue matched {source.replace(':', ' ')} priority before the oldest fallback"
     return SelectionResult(
@@ -565,7 +608,7 @@ def select_next(
         issue_url=winner.url,
         source=source,
         explanation=explanation,
-        roadmap_path=roadmap.path,
+        roadmap_path=dogfood_path if source == "roadmap:dogfood" else roadmap.path,
         ineligible=tuple(ineligible),
         dry_run=dry_run,
     )

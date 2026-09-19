@@ -57,6 +57,28 @@ def parse_candidate(
             parsed_value={"handoff_markdown": cleaned},
         )
 
+    if contract.name == "autodev.dogfood-decomposition":
+        try:
+            value = json.loads(cleaned)
+        except json.JSONDecodeError as exc:
+            raise RoleOutputFallbackError(
+                "fallback-text dogfood decomposition must be valid JSON"
+            ) from exc
+        from automation import dogfood_roadmap
+
+        parsed = dogfood_roadmap.validate_proposal_payload(value)
+        return FallbackCandidate(
+            role=contract.role,
+            canonical_text=json.dumps(
+                parsed,
+                indent=2,
+                sort_keys=True,
+                ensure_ascii=False,
+            )
+            + "\n",
+            parsed_value=parsed,
+        )
+
     if contract.role == "planner":
         from automation.planner_output import PlannerOutputError, sanitize_planner_output
 
@@ -139,7 +161,10 @@ def materialize_candidate(
         # authority boundary. Verifier uses the structured materializer because its
         # parsed semantic JSON is the established durable verifier artifact and it
         # does not create a UX sidecar.
-        if contract.role in {"reader", "synthesizer", "planner"}:
+        if (
+            contract.role in {"reader", "synthesizer", "planner"}
+            and contract.name != "autodev.dogfood-decomposition"
+        ):
             target.write_text(candidate.canonical_text, encoding="utf-8")
             return target
         materialized = role_output_contract.materialize_structured_output(

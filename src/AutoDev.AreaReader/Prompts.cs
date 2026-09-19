@@ -45,16 +45,12 @@ public static class AreaPrompts
         var briefBlocks = new StringBuilder();
         foreach (var result in areaResults)
         {
-            briefBlocks.Append(
-                $"""
-                ## Area: {result.Area}
-
-                Reader metadata:
-                {PythonJson.Dumps(result.Metadata)}
-
-                Reader brief:
-                {result.Brief}
-                """);
+            briefBlocks.Append("## Area: ");
+            briefBlocks.Append(result.Area);
+            briefBlocks.Append("\n\nReader metadata:\n");
+            briefBlocks.Append(PythonJson.Dumps(result.Metadata));
+            briefBlocks.Append("\n\nReader brief:\n");
+            briefBlocks.Append(result.Brief);
             briefBlocks.Append('\n');
         }
 

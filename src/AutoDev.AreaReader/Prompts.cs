@@ -33,7 +33,7 @@ public static class AreaPrompts
 
         Area input bundle:
         {bundle}
-        """;
+        """ + "\n";
 
     public static string BuildSynthesisPrompt(
         string issue,
@@ -84,7 +84,7 @@ public static class AreaPrompts
 
         Area reader briefs:
         {briefBlocks}
-        """;
+        """ + "\n";
     }
 
     public static string BuildPlannerPrompt(
@@ -122,7 +122,7 @@ public static class AreaPrompts
 
         All available verification command groups:
         {PythonJson.Dumps(commandGroups)}
-        """;
+        """ + "\n";
 }
 
 internal static class PythonJson

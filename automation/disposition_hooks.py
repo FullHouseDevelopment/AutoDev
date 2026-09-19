@@ -3,6 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from automation import (
+    disposition_transition,
     opencode_resume_status,
     semantic_disposition,
     workflow_dispatch,
@@ -95,7 +96,7 @@ def _decorate_semantic_outcome(
     if state == semantic_disposition.ACCEPTED_WITH_DEFERRALS and configured:
         # Only policy-deferrable entries exist; no human override is being
         # invented here. Persist the exact verifier/policy identity and continue.
-        accepted = semantic_disposition.accept_with_deferrals(repo)
+        accepted = disposition_transition.accept(repo)
         result.update(
             {
                 "state": "CONTINUE",

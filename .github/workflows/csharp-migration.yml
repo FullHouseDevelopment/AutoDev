@@ -1,0 +1,78 @@
+name: C# migration
+
+on:
+  push:
+    branches:
+      - 'migration/**'
+  pull_request:
+    branches:
+      - migration/csharp-host
+    types:
+      - opened
+      - synchronize
+      - reopened
+
+permissions:
+  contents: read
+
+concurrency:
+  group: csharp-migration-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  dotnet:
+    name: .NET 10 / ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-latest
+          - windows-latest
+    env:
+      AUTODEV_COMPAT_PYTHON: python
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          global-json-file: global.json
+
+      - name: Set up Python reference runtime
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
+        with:
+          python-version: '3.11'
+
+      - name: Restore C# migration projects
+        run: dotnet restore AutoDev.slnx
+
+      - name: Build C# migration projects
+        run: dotnet build AutoDev.slnx --configuration Release --no-restore
+
+      - name: Test C# migration projects
+        run: dotnet test AutoDev.slnx --configuration Release --no-build --no-restore
+
+  python-reference:
+    name: Python reference suite
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7
+        with:
+          python-version: '3.11'
+
+      - name: Compile Python reference implementation
+        run: python -m compileall -q automation area_reader tests
+
+      - name: Run Python reference tests
+        run: python -m unittest discover -s tests -v
+
+      - name: Validate immutable workflow references
+        run: python -m automation.validate_workflows --repo .

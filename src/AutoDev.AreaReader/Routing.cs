@@ -107,6 +107,6 @@ public static class AreaRouting
         return string.Join('\n', lines) + "\n";
     }
 
-    private static IReadOnlyDictionary<string, IReadOnlyList<string>> EmptyKeywordMap() =>
+    private static Dictionary<string, IReadOnlyList<string>> EmptyKeywordMap() =>
         new Dictionary<string, IReadOnlyList<string>>(StringComparer.Ordinal);
 }

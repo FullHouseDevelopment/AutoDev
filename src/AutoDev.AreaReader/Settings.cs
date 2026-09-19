@@ -10,7 +10,7 @@ public static class AreaReaderSettings
     public static readonly IReadOnlyList<string> PreferredSolutionFilterMarkers =
         ["no-gui", "nogui", "headless", "backend", "server", "api", "ci", "test"];
 
-    public const string MarkdownSmokeScript = """
+    public static readonly string MarkdownSmokeScript = NormalizeNewlines("""
 mapfile -t markdown_files < <(git ls-files '*.md')
 if ((${#markdown_files[@]} == 0)); then
   echo "No markdown files tracked; skipping markdown smoke check."
@@ -21,7 +21,7 @@ if grep -nE $'	|[ 	]+$' "${markdown_files[@]}"; then
   echo "Markdown smoke check failed: tabs or trailing whitespace found." >&2
   exit 1
 fi
-""";
+""");
 
     public static readonly IReadOnlyList<string> SupportedAreas =
         ["backend", "web", "maui", "ci", "tests", "docs", "api-client"];
@@ -66,6 +66,9 @@ fi
             "MauiProgram.cs", "App.xaml", "Program.cs", "Directory.Build.props",
             "Directory.Packages.props", "docs/*", "doc/*", "adr/*", "ADRs/*",
         ];
+
+    private static string NormalizeNewlines(string value) =>
+        value.Replace("\r\n", "\n", StringComparison.Ordinal).Replace('\r', '\n');
 
     public static readonly IReadOnlyDictionary<string, AreaHint> AreaHints =
         new ReadOnlyDictionary<string, AreaHint>(

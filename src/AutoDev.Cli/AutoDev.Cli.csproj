@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <AssemblyName>AutoDev.Cli</AssemblyName>
+    <RootNamespace>AutoDev</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../AutoDev.Core/AutoDev.Core.csproj" />
+  </ItemGroup>
+</Project>
